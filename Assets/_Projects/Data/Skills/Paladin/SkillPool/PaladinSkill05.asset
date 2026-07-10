@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78dd6cfcb7b7f294fab2f298d384ab35, type: 3}
+  m_Name: PaladinSkill05
+  m_EditorClassIdentifier: 
+  abilityName: "\u5723\u5149\u88C1\u51B3"
+  description: "\u53EC\u5524\u53E4\u795E\u6295\u4E0B\u7684\u5251\u67C4\uFF0C\u5BF9\u5706\u5F62\u533A\u57DF\u5185\u7684\u654C\u4EBA\u9020\u6210\u4E2D\u7B49\u795E\u5723\u4F24\u5BB3"
+  icon: {fileID: 0}
+  actionPointCost: 4
+  isInstant: 1
+  targetScope: 5
+  areaRadius: 7
+  areaRadiusMeters: 5.36
+  areaWidthMeters: 2
+  requiredTags:
+  - tagName: Job.Paladin
+  blockTags: []
+  abilityTags:
+  - tagName: DamageType.Divine
+  animTrigger: SkillIndex
+  skillAnimIndex: 6
+  defaultVfx: []
+  effects:
+  - rid: 3699152073665019907
+  references:
+    version: 2
+    RefIds:
+    - rid: 3699152073665019907
+      type: {class: DamageEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u9020\u6210180%\u795E\u5723\u5C5E\u6027\u4F24\u5BB3"
+        phase: 1
+        targetSelection: 0
+        scaler: 1.8
+        damageType:
+          tagName: DamageType.Divine

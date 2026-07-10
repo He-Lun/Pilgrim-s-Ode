@@ -25,6 +25,7 @@ public struct CombatEvent
     public AbilitySystemComponent instigator;
     public AbilitySystemComponent target;
     public GameplayAbility ability;
+    public AbilityActivationContext abilityContext;
     public float value;
     public GameplayTag tag;
     public int intValue;

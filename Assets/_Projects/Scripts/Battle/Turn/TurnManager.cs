@@ -108,6 +108,8 @@ public class TurnManager : MonoBehaviour
 
         // TODO: HandCardManager — 各角色开局首抽至手牌上限
 
+        BattleZoneManager.Instance.ClearAll();
+
         battleActive = true;
         SetPhase(TurnPhase.BattleStart);
         AdvanceToNext();
@@ -203,8 +205,10 @@ public class TurnManager : MonoBehaviour
         // 行动点 +1
         actor.TeamResource?.OnTurnStart(1);
 
+        // 刷新移动力
+        actor.GetComponent<CharacterMovementController>()?.RefreshMoveBudget();
+
         // TODO: HandCardManager — 抽牌至手牌上限 handLimit
-        // TODO: 移动系统 — 按 actor.Attributes.Speed 刷新本回合移动值
 
         RaiseTurnEvent(CombatEventType.TurnStarted, actor);
         OnTurnBegan?.Invoke(actor);
@@ -247,6 +251,7 @@ public class TurnManager : MonoBehaviour
     {
         battleActive = false;
         CurrentActor = null;
+        BattleZoneManager.Instance.ClearAll();
         SetPhase(TurnPhase.BattleEnd);
 
         OnBattleEnded?.Invoke(winnerTeamId);
@@ -291,20 +296,31 @@ public class TurnManager : MonoBehaviour
     {
         winnerTeamId = -1;
 
-        var aliveTeams = new HashSet<int>();
+        var allTeams = new HashSet<int>();
+        var teamsWithLiving = new HashSet<int>();
+
         foreach (var a in allActors)
         {
             if (a == null) continue;
-            if (a.Attributes != null && a.Attributes.IsDead()) continue;
-            aliveTeams.Add(a.TeamId);
+            allTeams.Add(a.TeamId);
+
+            if (a.Attributes == null || !a.Attributes.IsDead())
+                teamsWithLiving.Add(a.TeamId);
         }
 
-        if (aliveTeams.Count == 0)
-            return true; // 平局
+        // 全员阵亡 → 平局结束
+        if (teamsWithLiving.Count == 0)
+            return true;
 
-        if (aliveTeams.Count == 1)
+        // 仅一个阵营参战（常见于本地测试）→ 不判胜负，战斗继续
+        if (allTeams.Count <= 1)
+            return false;
+
+        // 多个阵营中只剩一方有人存活 → 该方获胜
+        if (teamsWithLiving.Count == 1)
         {
-            foreach (var t in aliveTeams) winnerTeamId = t;
+            foreach (var t in teamsWithLiving)
+                winnerTeamId = t;
             return true;
         }
 

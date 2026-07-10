@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f1df5b9c51c11744905016b27aefef2, type: 3}
+  m_Name: Haru
+  m_EditorClassIdentifier: 
+  name: "\u693F"
+  description: "\u6765\u81EA\u4F0A\u95E8\u7684\u5DEB\u5973"
+  job:
+    tagName: Job.priest
+  kingdom:
+    tagName: YiMen
+  baseHealth: 500
+  baseAttack: 50
+  baseDefense: 20
+  baseAgility: 130
+  baseSpeed: 15
+  jobAbilityPool: {fileID: 11400000, guid: 8abf17d8e340be244a5ff036f0553b63, type: 2}
+  exclusiveAbilities: []
+  abilityPresentations:
+  - ability: {fileID: 11400000, guid: a1f41699984aa724aaa2bcd24a225284, type: 2}
+    skillAnimIndex: 1
+    animTrigger: 
+    castVfxPrefab: {fileID: 0}
+    hitVfxPrefab: {fileID: 0}
+    castSpawnPoint: 0
+    hitSpawnPoint: 0
+    hitHeightOffset: 0
+  innateAbilities: []
+  inspirationAbility: {fileID: 11400000, guid: 6fe6fc68e8bbdec4ba5463ca52ca8325, type: 2}
+  inspirationTask: {fileID: 11400000, guid: 2c018e079ef211e4a811fda6d69b0b8e, type: 2}

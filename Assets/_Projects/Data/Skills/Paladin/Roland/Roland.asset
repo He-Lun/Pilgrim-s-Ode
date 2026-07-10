@@ -1,0 +1,111 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f1df5b9c51c11744905016b27aefef2, type: 3}
+  m_Name: Roland
+  m_EditorClassIdentifier: 
+  name: "\u7F57\u5170"
+  description: "\u65AF\u975E\u5C3C\u4E9A\u738B\u65CF\u7684\u4E03\u516C\u4E3B\uFF0C\u62E5\u6709\u6700\u7EAF\u6B63\u7684\u738B\u65CF\u8840\u8109\uFF0C\u56E0\u538C\u6076\u738B\u65CF\u7684\u4F5C\u98CE\u800C\u6700\u540E\u52A0\u5165\u4E86\u5DE1\u793C\u8005\u5C0F\u961F"
+  job:
+    tagName: Job.Paladin
+  kingdom:
+    tagName: Kingdom.Surfacia
+  baseHealth: 5500
+  baseAttack: 55
+  baseDefense: 50
+  baseAgility: 100
+  baseSpeed: 10
+  jobAbilityPool: {fileID: 11400000, guid: 78797b1a8ecaf4343b64c1aecff8c366, type: 2}
+  exclusiveAbilities: []
+  abilityPresentations:
+  - ability: {fileID: 11400000, guid: ef863af6388c516479ca2009ec9b7ac9, type: 2}
+    skillAnimIndex: 4
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 1210069404974878, guid: fbab27c98b168764eb295cfff1e9f61f, type: 3}
+      timing: 0
+      anchor:
+        type: 1
+        attachPointId: 
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 0
+      rotationMode: 0
+      autoDestroySeconds: 0
+  - ability: {fileID: 11400000, guid: 34697f37b8a26914faf5dbb413a14854, type: 2}
+    skillAnimIndex: 2
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 1644958980890870, guid: 5e841c48be9318145af9204a7658cc2e, type: 3}
+      timing: 0
+      anchor:
+        type: 5
+        attachPointId: HolySlash
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 0
+      rotationMode: 3
+      autoDestroySeconds: 0
+  - ability: {fileID: 11400000, guid: 3b73820aba7f1ab44a442b0d56b1536d, type: 2}
+    skillAnimIndex: 5
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 1893033738566276, guid: 3e04efdf8ee665d48962b33b06e8e3d3, type: 3}
+      timing: 0
+      anchor:
+        type: 5
+        attachPointId: Stab
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 0
+      rotationMode: 3
+      autoDestroySeconds: 0
+  - ability: {fileID: 11400000, guid: 4d41c040e67e3e84291659b6bb35c35f, type: 2}
+    skillAnimIndex: 1
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 1645009922904612, guid: 5e3170c6ef0f014409bd7423e3bb805a, type: 3}
+      timing: 0
+      anchor:
+        type: 5
+        attachPointId: WeaponTip
+        localOffset: {x: 0, y: -0.32, z: 0}
+      attachMode: 0
+      rotationMode: 3
+      autoDestroySeconds: 0
+  - ability: {fileID: 11400000, guid: a1633219c1f3e8344b02dd085694fdd7, type: 2}
+    skillAnimIndex: 6
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 656651710569726630, guid: eaea4463a3644a50954d62d01e05c26c,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 4
+        attachPointId: 
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 0
+      rotationMode: 3
+      autoDestroySeconds: 0
+  - ability: {fileID: 11400000, guid: 5e5d126c97d61c541ab7c39a21cac7f2, type: 2}
+    skillAnimIndex: 8
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 4275290558304579315, guid: f9903cfc2e30b984399da1d7a8de06ec,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 0
+        attachPointId: Stomach
+        localOffset: {x: 0, y: 1, z: 0}
+      attachMode: 1
+      rotationMode: 3
+      autoDestroySeconds: 2
+  innateAbilities: []
+  inspirationAbility: {fileID: 11400000, guid: 5e5d126c97d61c541ab7c39a21cac7f2, type: 2}
+  inspirationTask: {fileID: 11400000, guid: 3f258dc00efff9f4aa11064c1e6f186b, type: 2}

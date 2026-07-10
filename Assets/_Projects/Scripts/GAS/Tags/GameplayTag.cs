@@ -64,7 +64,11 @@ using System.Runtime.CompilerServices;
         /// </summary>
         public static class State
         {
-            //示例：public static readonly GameplayTag Stun = new GameplayTag("State.Stun");
+            public static readonly GameplayTag Idle = new GameplayTag("State.Idle");
+            public static readonly GameplayTag Moving = new GameplayTag("State.Moving");
+            public static readonly GameplayTag Casting = new GameplayTag("State.Casting");
+            public static readonly GameplayTag Hit = new GameplayTag("State.Hit");
+            public static readonly GameplayTag Dead = new GameplayTag("State.Dead");
         }
         
         //职业
@@ -112,7 +116,21 @@ using System.Runtime.CompilerServices;
         //Buff
         public static class Buff
         {
-            public static readonly GameplayTag HolyShield = new GameplayTag("Buff.HolyShield");
+            [Header("攻击力提高")]
+            public static readonly GameplayTag AttackUp = new GameplayTag("Buff.AttackUp");
+            [Header("防御力提高")]
+            public static readonly GameplayTag DefenseUp = new GameplayTag("Buff.DefenseUp");
+            [Header("防御力提高")]
+            public static readonly GameplayTag AgilityUp = new GameplayTag("Buff.AgilityUp");
+            [Header("速度提高")]
+            public static readonly GameplayTag SpeedUp = new GameplayTag("Buff.SpeedUp");
+        }
+
+        //领域
+        public static class Zone
+        {
+            [Header("神圣领域")]
+            public static readonly GameplayTag HolyField = new GameplayTag("Zone.HolyField");
         }
     }
 

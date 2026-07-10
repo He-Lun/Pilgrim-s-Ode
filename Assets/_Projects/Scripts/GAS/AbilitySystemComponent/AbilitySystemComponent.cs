@@ -12,9 +12,18 @@ using UnityEngine;
         [SerializeField] private List<GameplayTag> appliedTags = new List<GameplayTag>();
         private InspirationTaskTracker inspirationTracker;
 
+        [Header("========== 角色配置 ==========")]
+        [SerializeField] private CharacterDataSO characterData;
+
         [Header("========== 能力配置 ==========")]
         [SerializeField] private GameplayAbility inspirationAbility;
         [SerializeField] private List<GameplayAbility> passiveAbilities = new List<GameplayAbility>();
+
+        private readonly List<GameplayAbility> knownAbilities = new List<GameplayAbility>();
+        private GameplayAbility pendingAbility;
+        private AbilityActivationContext pendingContext;
+        private bool pendingHitResolved;
+        private bool pendingCompleteResolved;
 
         [Header("========== 阵营 ==========")]
         [SerializeField] private int teamId;
@@ -24,8 +33,11 @@ using UnityEngine;
 
         public TeamResourceManager TeamResource => teamResource;
         public int TeamId => teamId;
+        public CharacterDataSO CharacterData => characterData;
+        public IReadOnlyList<GameplayAbility> KnownAbilities => knownAbilities;
         public GameplayAbility InspirationAbility => inspirationAbility;
         public InspirationTaskTracker InspirationTracker => inspirationTracker;
+        public bool HasPendingAbility => pendingAbility != null;
 
         // ---------- 事件 ----------
         public Action<GameplayAbility, List<AbilitySystemComponent>> OnAbilityUsed;
@@ -60,8 +72,12 @@ using UnityEngine;
         {
             if (data == null) return;
 
+            characterData = data;
             Initialize(attributes ?? GetComponent<AttributeSet>(), resource, team);
             attributes?.Initialize(data);
+
+            ApplyIdentityTags(data);
+            RebuildKnownAbilities(data);
 
             inspirationAbility = data.inspirationAbility;
 
@@ -72,6 +88,67 @@ using UnityEngine;
             SetupPassives();
 
             inspirationTracker.Initialize(data.inspirationTask, data.inspirationAbility, this);
+        }
+
+        private void ApplyIdentityTags(CharacterDataSO data)
+        {
+            if (!string.IsNullOrEmpty(data.job.TagName))
+                AddTag(data.job);
+            if (!string.IsNullOrEmpty(data.kingdom.TagName))
+                AddTag(data.kingdom);
+        }
+
+        private void RebuildKnownAbilities(CharacterDataSO data)
+        {
+            knownAbilities.Clear();
+            foreach (var ability in data.GetAllKnownAbilities())
+                knownAbilities.Add(ability);
+        }
+
+        public AbilityPresentationEntry GetPresentation(GameplayAbility ability)
+        {
+            if (characterData != null)
+                return characterData.ResolvePresentation(ability);
+
+            return AbilityPresentationEntry.FromAbilityDefaults(ability);
+        }
+
+        public bool KnowsAbility(GameplayAbility ability)
+        {
+            return ability != null && knownAbilities.Contains(ability);
+        }
+
+        public void BeginAbilityActivation(GameplayAbility ability, AbilityActivationContext context)
+        {
+            pendingAbility = ability;
+            pendingContext = context;
+            pendingHitResolved = false;
+            pendingCompleteResolved = false;
+        }
+
+        public void ResolvePendingAbilityPhase(AbilityEffectPhase phase)
+        {
+            if (pendingAbility == null) return;
+
+            if (phase == AbilityEffectPhase.OnHit)
+            {
+                if (pendingHitResolved) return;
+                pendingHitResolved = true;
+            }
+            else if (phase == AbilityEffectPhase.OnComplete)
+            {
+                if (pendingCompleteResolved) return;
+                pendingCompleteResolved = true;
+            }
+
+            pendingAbility.ExecuteEffectsByPhase(this, pendingContext, phase);
+        }
+
+        public void ClearPendingAbility()
+        {
+            pendingAbility = null;
+            pendingHitResolved = false;
+            pendingCompleteResolved = false;
         }
 
         public bool HasEnoughActionPoints(int cost)
@@ -91,7 +168,7 @@ using UnityEngine;
             {
                 if (passive == null) continue;
                 var dummy = new List<AbilitySystemComponent> { this };
-                passive.TryActivate(this, dummy);
+                passive.TryActivateAsInspiration(this, dummy);
             }
         }
 
@@ -178,15 +255,16 @@ using UnityEngine;
         }
 
         /// <summary>
-        /// 广播移动事件（供移动系统调用）
+        /// 广播移动事件（供移动系统调用），distanceMeters 为本次移动米数。
         /// </summary>
-        public void NotifyMoved(int distance)
+        public void NotifyMoved(float distanceMeters)
         {
             CombatEventBus.Instance.Raise(new CombatEvent
             {
                 type = CombatEventType.CharacterMoved,
                 instigator = this,
-                intValue = distance
+                value = distanceMeters,
+                intValue = Mathf.Max(1, Mathf.RoundToInt(distanceMeters))
             });
         }
 

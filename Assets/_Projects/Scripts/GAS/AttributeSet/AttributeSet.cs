@@ -55,8 +55,8 @@ using UnityEngine;
         [SerializeField] private float baseDefense = 5f;
         [Header("基础敏捷值（决定行动频率）")]
         [SerializeField] private float baseAgility = 10f;
-        [Header("速度（每回合移动力）")]
-        [SerializeField] private float baseSpeed = 10f;
+        [Header("速度（每回合移动力点数，×1.5m 即为移动米数，BG3 约 5–8 点）")]
+        [SerializeField] private float baseSpeed = 6f;
 
         [Header("========== 运行时当前值 ==========")]
         [Header("当前生命值")]
@@ -69,6 +69,12 @@ using UnityEngine;
         public Action<float> OnHealthChanged;
         public Action<float> OnActionValueChanged;
         public Action<string, float, float> OnAttributeChanged; // 属性名, 旧值, 新值
+
+        // ---------- 修改器(Buff)生命周期事件 ----------
+        /// <summary>某 sourceTag 的修改器新增（含刷新）时触发。</summary>
+        public Action<GameplayTag> OnModifierAdded;
+        /// <summary>某 sourceTag 的修改器全部移除（过期/被驱散）时触发 —— buff 特效据此销毁。</summary>
+        public Action<GameplayTag> OnModifierRemoved;
 
         // ---------- 属性访问器 ----------
         public float CurrentHealth
@@ -137,14 +143,17 @@ using UnityEngine;
                     existing.sourceTag.Matches(modifier.sourceTag))
                 {
                     modifiers[i] = modifier;
+                    OnModifierAdded?.Invoke(modifier.sourceTag);
                     return;
                 }
             }
             modifiers.Add(modifier);
+            OnModifierAdded?.Invoke(modifier.sourceTag);
         }
 
         public void RemoveModifier(GameplayTag sourceTag, string attributeName = null)
         {
+            bool removedAny = false;
             for (int i = modifiers.Count - 1; i >= 0; i--)
             {
                 var mod = modifiers[i];
@@ -153,9 +162,24 @@ using UnityEngine;
                     if (string.IsNullOrEmpty(attributeName) || mod.attributeName == attributeName)
                     {
                         modifiers.RemoveAt(i);
+                        removedAny = true;
                     }
                 }
             }
+
+            if (removedAny && !HasModifierWithTag(sourceTag))
+                OnModifierRemoved?.Invoke(sourceTag);
+        }
+
+        /// <summary>是否仍有该来源标签的活跃(未过期)修改器。</summary>
+        public bool HasModifierWithTag(GameplayTag sourceTag)
+        {
+            foreach (var mod in modifiers)
+            {
+                if (mod.sourceTag.Matches(sourceTag) && !mod.IsExpired())
+                    return true;
+            }
+            return false;
         }
 
         public void RemoveAllModifiers()
@@ -167,18 +191,29 @@ using UnityEngine;
         //由TurnManager调用
         public void TickModifiers(int turn)
         {
-            bool anyExpired = false;
+            List<GameplayTag> expiredTags = null;
             for (int i = 0; i < modifiers.Count; i++)
             {
                 var mod = modifiers[i];
                 mod.Tick(turn);
                 modifiers[i] = mod;
-                if (mod.IsExpired()) anyExpired = true;
+                if (mod.IsExpired())
+                {
+                    expiredTags ??= new List<GameplayTag>();
+                    if (!expiredTags.Contains(mod.sourceTag))
+                        expiredTags.Add(mod.sourceTag);
+                }
             }
 
-            if (anyExpired)
+            if (expiredTags == null) return;
+
+            modifiers.RemoveAll(m => m.IsExpired());
+
+            // 仅在该来源标签不再有活跃修改器时广播移除（buff 特效据此销毁）。
+            foreach (var tag in expiredTags)
             {
-                modifiers.RemoveAll(m => m.IsExpired());
+                if (!HasModifierWithTag(tag))
+                    OnModifierRemoved?.Invoke(tag);
             }
         }
 
