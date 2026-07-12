@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: PaladinSkill02
   m_EditorClassIdentifier: 
   abilityName: "\u5723\u5149\u52A0\u62A4\u2160\u578B"
-  description: "\u83B7\u5F97\u5C0F\u5E45\u5EA6\u7684\u653B\u51FB\u529B\u589E\u5E45\uFF0C\u6301\u7EED\u56DB\u56DE\u5408"
+  description: "\u83B7\u5F97\u4E2D\u5E45\u5EA6\u7684\u653B\u51FB\u529B\u589E\u5E45\uFF0C\u6301\u7EED\u56DB\u56DE\u5408"
   icon: {fileID: 0}
   actionPointCost: 2
   isInstant: 1
@@ -37,22 +37,23 @@ MonoBehaviour:
     - rid: 3699151960701927436
       type: {class: BuffAbilityEffect, ns: , asm: Assembly-CSharp}
       data:
-        description: "\u653B\u51FB\u529B\u63D0\u9AD820%\uFF0C\u6301\u7EED\u56DB\u56DE\u5408"
+        description: "\u653B\u51FB\u529B\u63D0\u9AD850%\uFF0C\u6301\u7EED\u56DB\u56DE\u5408"
         phase: 2
         targetSelection: 0
-        attributeName: Attack
-        multiplicativeBonus: 0.2
-        durationTurns: 4
-        buffTag:
-          tagName: Buff.AttackUp
-        buffVfx:
-          prefab: {fileID: 8779886354908515619, guid: 189611b421aefc24ca1e8013839b0e0b,
+        chance: 1
+        targetVfx:
+          prefab: {fileID: 1707000239251520, guid: 7ca99580e6cb71e49a3da241e1ce24a1,
             type: 3}
           timing: 0
           anchor:
             type: 0
             attachPointId: Stomach
-            localOffset: {x: 0, y: 1, z: 0}
+            localOffset: {x: 0, y: 0, z: 0}
           attachMode: 1
           rotationMode: 0
           autoDestroySeconds: 4
+        attributeName: Attack
+        multiplicativeBonus: 0.5
+        durationTurns: 4
+        buffTag:
+          tagName: Buff.AttackUp.HolyLightI

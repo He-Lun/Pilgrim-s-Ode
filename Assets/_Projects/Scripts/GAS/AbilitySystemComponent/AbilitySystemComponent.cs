@@ -10,7 +10,8 @@ using UnityEngine;
         [Header("========== 核心引用 ==========")]
         [SerializeField] private AttributeSet attributes;
         [SerializeField] private List<GameplayTag> appliedTags = new List<GameplayTag>();
-        private InspirationTaskTracker inspirationTracker;
+        private InspirationTaskTracker inspirationTracker = new InspirationTaskTracker();
+        private RitualChannelTracker ritualTracker = new RitualChannelTracker();
 
         [Header("========== 角色配置 ==========")]
         [SerializeField] private CharacterDataSO characterData;
@@ -37,7 +38,17 @@ using UnityEngine;
         public IReadOnlyList<GameplayAbility> KnownAbilities => knownAbilities;
         public GameplayAbility InspirationAbility => inspirationAbility;
         public InspirationTaskTracker InspirationTracker => inspirationTracker;
+        public RitualChannelTracker RitualTracker => ritualTracker;
+        public bool IsChanneling => ritualTracker.IsActive;
+
         public bool HasPendingAbility => pendingAbility != null;
+
+        /// <summary>主动/被动打断祈福引导。</summary>
+        public void InterruptRitualIfAny()
+        {
+            if (!ritualTracker.IsActive) return;
+            ritualTracker.Interrupt();
+        }
 
         // ---------- 事件 ----------
         public Action<GameplayAbility, List<AbilitySystemComponent>> OnAbilityUsed;
@@ -51,13 +62,21 @@ using UnityEngine;
 
         void Awake()
         {
-            inspirationTracker ??= new InspirationTaskTracker();
+            attributes ??= GetComponent<AttributeSet>();
+            if (attributes != null)
+                attributes.OnModifierRemoved += HandleModifierRemoved;
         }
 
         void OnDestroy()
         {
-            inspirationTracker?.Dispose();
+            inspirationTracker.Dispose();
+            ritualTracker.Dispose();
+            if (attributes != null)
+                attributes.OnModifierRemoved -= HandleModifierRemoved;
         }
+
+        /// <summary>修改器过期/驱散时同步移除对应状态标签（眩晕、属性 Buff 等）。</summary>
+        private void HandleModifierRemoved(GameplayTag tag) => RemoveTag(tag);
 
         // ---------- 初始化 ----------
         public void Initialize(AttributeSet attrs, TeamResourceManager resource, int team = 0)
@@ -179,6 +198,9 @@ using UnityEngine;
             if (ability == null)
                 return AbilityActivationResult.UnknownError;
 
+            if (ritualTracker.IsActive)
+                ritualTracker.Interrupt();
+
             return ability.TryActivate(this, context);
         }
 
@@ -187,6 +209,9 @@ using UnityEngine;
         {
             if (ability == null)
                 return AbilityActivationResult.UnknownError;
+
+            if (ritualTracker.IsActive)
+                ritualTracker.Interrupt();
 
             return ability.TryActivate(this, AbilityActivationContext.FromTargets(
                 targets ?? new List<AbilitySystemComponent> { this }));
@@ -238,19 +263,56 @@ using UnityEngine;
             return true;
         }
 
-        /// <summary>
-        /// 施加 Buff 并广播事件（供 AbilityEffect 调用）
-        /// </summary>
+        /// <summary>是否仍有该类别的 buff（修改器或 tag-only 状态）。</summary>
+        public bool HasActiveEffectCategory(GameplayTag category)
+        {
+            if (string.IsNullOrEmpty(category.TagName)) return false;
+            if (attributes != null && attributes.HasModifierInCategory(category)) return true;
+
+            foreach (var tag in appliedTags)
+            {
+                if (BuffCategoryTag.BelongsToCategory(tag, category))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>施加 Buff 并广播事件（供 AbilityEffect 调用）</summary>
         public void ApplyBuffTo(AbilitySystemComponent target, GameplayTag buffTag, AbilitySystemComponent instigator = null)
         {
-            target?.AddTag(buffTag);
+            if (target == null) return;
+            target.AddTag(buffTag);
+            NotifyBuffPresentation(target, buffTag, instigator ?? this);
+        }
+
+        /// <summary>一次性目标特效（无 buff tag，如行动提前）。</summary>
+        public void PlayTargetEffect(AbilitySystemComponent target, VfxSpawnEntry vfx)
+        {
+            if (target == null || vfx == null || !vfx.IsValid) return;
 
             CombatEventBus.Instance.Raise(new CombatEvent
             {
                 type = CombatEventType.BuffApplied,
-                instigator = instigator ?? this,
+                instigator = this,
                 target = target,
-                tag = buffTag
+                effectVfx = vfx
+            });
+        }
+
+        public static void NotifyBuffPresentation(
+            AbilitySystemComponent target,
+            GameplayTag instanceTag,
+            AbilitySystemComponent instigator)
+        {
+            if (target == null) return;
+
+            CombatEventBus.Instance.Raise(new CombatEvent
+            {
+                type = CombatEventType.BuffApplied,
+                instigator = instigator,
+                target = target,
+                tag = instanceTag
             });
         }
 

@@ -109,6 +109,7 @@ public class TurnManager : MonoBehaviour
         // TODO: HandCardManager — 各角色开局首抽至手牌上限
 
         BattleZoneManager.Instance.ClearAll();
+        BattleBarrierManager.Instance.ClearAll();
 
         battleActive = true;
         SetPhase(TurnPhase.BattleStart);
@@ -132,18 +133,22 @@ public class TurnManager : MonoBehaviour
     }
 
     // ==================================================================
-    //  激励完成入口（+3AP / 行动提前100% / 授予激励卡；不进插入栈）
+    //  激励完成入口（+AP / 行动提前 / 授予激励卡；不进插入栈）
     // ==================================================================
-    // 说明：目前 InspirationTaskTracker 仍走旧逻辑（自动释放技能 + ForceImmediateTurn）。
-    //       待 HandCardManager 落地后，把 Tracker 改为只调用本方法。
-    public void OnInspirationCompleted(AbilitySystemComponent asc, GameplayAbility inspiration)
+    public void OnInspirationCompleted(
+        AbilitySystemComponent asc,
+        GameplayAbility inspiration,
+        InspirationTaskSO task = null)
     {
         if (asc == null) return;
 
-        asc.TeamResource?.AddActionPoints(3);
+        int apReward = task != null ? task.actionPointReward : 3;
+        float priorityBoost = task != null ? task.actionPriorityBoost : 1f;
+
+        asc.TeamResource?.AddActionPoints(apReward);
 
         if (actionQueue != null)
-            actionQueue.AdvanceForward(asc, 1f);
+            actionQueue.AdvanceForward(asc, priorityBoost);
 
         // TODO: HandCardManager — 授予激励卡（计入上限，满手则失去；可叠加；打出即消耗移除）
         // asc.HandCards?.GrantInspirationCard(inspiration);
@@ -202,6 +207,15 @@ public class TurnManager : MonoBehaviour
         CurrentActor = actor;
         SetPhase(TurnPhase.TurnStart);
 
+        // 眩晕：跳过本回合行动，直接结算（Tick 状态持续）
+        if (actor != null && actor.HasTag(GameplayTag.Debuff.Stun))
+        {
+            RaiseTurnEvent(CombatEventType.TurnStarted, actor);
+            OnTurnBegan?.Invoke(actor);
+            EnterTurnSettle();
+            return;
+        }
+
         // 行动点 +1
         actor.TeamResource?.OnTurnStart(1);
 
@@ -225,8 +239,12 @@ public class TurnManager : MonoBehaviour
         // 结束前先把残留插入行动排空
         DrainInserts();
 
-        // Buff 按“该角色回合”结算一次
-        actor?.Attributes?.TickModifiers(1);
+        // Buff 按“该角色回合”结算；有祈福护佑则冻结增益持续
+        bool pauseBuffs = actor != null && actor.HasTag(GameplayTag.Buff.BlessingWard);
+        actor?.Attributes?.TickModifiers(1, pauseBuffs);
+
+        // 施法者回合结束：仪式持续倒数
+        actor?.RitualTracker?.OnCasterTurnEnded();
 
         RaiseTurnEvent(CombatEventType.TurnEnded, actor);
         OnTurnEnded?.Invoke(actor);
@@ -252,6 +270,7 @@ public class TurnManager : MonoBehaviour
         battleActive = false;
         CurrentActor = null;
         BattleZoneManager.Instance.ClearAll();
+        BattleBarrierManager.Instance.ClearAll();
         SetPhase(TurnPhase.BattleEnd);
 
         OnBattleEnded?.Invoke(winnerTeamId);

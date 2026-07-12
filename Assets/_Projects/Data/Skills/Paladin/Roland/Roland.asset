@@ -19,7 +19,7 @@ MonoBehaviour:
   kingdom:
     tagName: Kingdom.Surfacia
   baseHealth: 5500
-  baseAttack: 55
+  baseAttack: 60
   baseDefense: 50
   baseAgility: 100
   baseSpeed: 10
@@ -69,7 +69,7 @@ MonoBehaviour:
     skillAnimIndex: 1
     animTrigger: SkillIndex
     vfxOverrides:
-    - prefab: {fileID: 1645009922904612, guid: 5e3170c6ef0f014409bd7423e3bb805a, type: 3}
+    - prefab: {fileID: 1011157772751556, guid: ca63c6ac7458764498741e0306f78528, type: 3}
       timing: 0
       anchor:
         type: 5

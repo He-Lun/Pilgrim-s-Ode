@@ -12,6 +12,7 @@ public class CharacterAnimatorDriver : MonoBehaviour
     private static readonly int HitRecoverHash = Animator.StringToHash("HitRecover");
     private static readonly int DeathHash = Animator.StringToHash("Death");
     private static readonly int SkillIndexHash = Animator.StringToHash("SkillIndex");
+    private static readonly int IsStunnedHash = Animator.StringToHash("IsStunned");
 
     [SerializeField] private Animator animator;
 
@@ -35,6 +36,13 @@ public class CharacterAnimatorDriver : MonoBehaviour
         if (animator == null) return;
         if (HasParameter(IsMovingHash))
             animator.SetBool(IsMovingHash, moving);
+    }
+
+    public void SetStunned(bool stunned)
+    {
+        if (animator == null) return;
+        if (HasParameter(IsStunnedHash))
+            animator.SetBool(IsStunnedHash, stunned);
     }
 
     public void TriggerHit()

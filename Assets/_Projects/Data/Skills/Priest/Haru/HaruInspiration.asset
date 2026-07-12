@@ -12,20 +12,43 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78dd6cfcb7b7f294fab2f298d384ab35, type: 3}
   m_Name: HaruInspiration
   m_EditorClassIdentifier: 
-  abilityName: "\u693F\u7684\u6FC0\u52B1\u6280\u80FD"
-  description: 111
+  abilityName: "\u4E0E\u795E\u5171\u821E"
+  description: "\u6240\u6709\u53CB\u65B9\u89D2\u8272\u884C\u52A8\u63D0\u524D100%"
   icon: {fileID: 0}
-  actionPointCost: 1
+  actionPointCost: 0
   isInstant: 0
-  targetScope: 1
-  areaRadius: 1
-  areaRadiusMeters: 0
-  requiredTags: []
+  targetScope: 4
+  areaRadius: 121
+  areaRadiusMeters: 126.7
+  areaWidthMeters: 2
+  requiredTags:
+  - tagName: Job.Priest
   blockTags: []
   abilityTags: []
-  animTrigger: 
-  skillAnimIndex: 0
-  effects: []
+  animTrigger: SkillIndex
+  skillAnimIndex: 8
+  defaultVfx: []
+  effects:
+  - rid: 3699152103755481090
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 3699152103755481090
+      type: {class: AdvanceActionAbilityEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u884C\u52A8\u63D0\u524D100%"
+        phase: 1
+        targetSelection: 0
+        chance: 1
+        advancePercent: 1
+        targetVfx:
+          prefab: {fileID: 1371584380506648, guid: 13bf577ec3321a741a0ca5ccdee3e9b1,
+            type: 3}
+          timing: 1
+          anchor:
+            type: 5
+            attachPointId: Stomach
+            localOffset: {x: 0, y: -1.1, z: 0}
+          attachMode: 1
+          rotationMode: 0
+          autoDestroySeconds: 1

@@ -247,6 +247,12 @@ public abstract class GameplayAbility : ScriptableObject
         if (targetScope == TargetScope.AreaAroundSelf)
             return BattleTargeting.FilterEnemiesInRadius(owner, owner.transform.position, GetAreaRadiusMeters());
 
+        if (targetScope == TargetScope.AllAllies)
+            return BattleTargeting.FilterAllies(owner, includeCaster: true);
+
+        if (targetScope == TargetScope.AllEnemies)
+            return BattleTargeting.FilterEnemies(owner);
+
         if (targetScope == TargetScope.DirectedRect)
         {
             Vector3 origin = owner.transform.position;
@@ -293,6 +299,12 @@ public abstract class AbilityEffect
     [Tooltip("FromAbility=按技能 targetScope 解析；ExplicitOnly=仅 explicitTargets")]
     public EffectTargetSelection targetSelection = EffectTargetSelection.FromAbility;
 
+    [Tooltip("触发概率 0~1；1=必触发。眩晕等概率效果在此配置")]
+    [Range(0f, 1f)] public float chance = 1f;
+
+    /// <summary>未通过概率检定则跳过本效果。</summary>
+    protected bool RollChance() => chance >= 1f || UnityEngine.Random.value <= chance;
+
     public virtual void Execute(AbilitySystemComponent caster, AbilityActivationContext context)
     {
         Execute(caster, null, context);
@@ -303,6 +315,8 @@ public abstract class AbilityEffect
         GameplayAbility sourceAbility,
         AbilityActivationContext context)
     {
+        if (!RollChance()) return;
+
         var targets = BattleTargeting.ResolveEffectTargets(caster, sourceAbility, context, targetSelection);
         Execute(caster, targets);
     }

@@ -26,6 +26,9 @@ public class BattleTestBootstrap : MonoBehaviour
     [Header("调试")]
     [SerializeField] private bool showDebugHud = true;
     [SerializeField] private bool snapActorsToNavMeshOnStart = true;
+    [Header("表现")]
+    [Tooltip("角色 Buff + 屏障/领域世界特效，共用同一 Catalog")]
+    [SerializeField] private BuffPresentationCatalog buffPresentationCatalog;
     [Tooltip("所有角色 TeamId 相同时，自动拆成两个阵营以便测试回合流转")]
     [SerializeField] private bool autoSplitTeamsWhenSingleSide = true;
 
@@ -74,6 +77,9 @@ public class BattleTestBootstrap : MonoBehaviour
         SetupTeamResources(roster);
         ApplyTestTeamSplit(roster);
         WireActors(roster);
+
+        if (buffPresentationCatalog != null)
+            BattleBarrierManager.Instance.BindCatalog(buffPresentationCatalog);
 
         var turnManager = TurnManager.Instance;
         turnManager.OnTurnBegan -= HandleTurnBegan;
@@ -216,7 +222,9 @@ public class BattleTestBootstrap : MonoBehaviour
 
             if (asc.GetComponent<AbilityVfxPlayer>() == null)
             {
-                asc.gameObject.AddComponent<AbilityVfxPlayer>();
+                var player = asc.gameObject.AddComponent<AbilityVfxPlayer>();
+                if (buffPresentationCatalog != null)
+                    player.BindCatalog(buffPresentationCatalog);
                 Debug.LogWarning($"[BattleTestBootstrap] {asc.name} 缺少 AbilityVfxPlayer，已自动添加。");
             }
         }

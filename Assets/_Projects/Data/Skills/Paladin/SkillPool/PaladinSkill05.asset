@@ -37,9 +37,10 @@ MonoBehaviour:
     - rid: 3699152073665019907
       type: {class: DamageEffect, ns: , asm: Assembly-CSharp}
       data:
-        description: "\u9020\u6210180%\u795E\u5723\u5C5E\u6027\u4F24\u5BB3"
+        description: "\u9020\u6210350%\u795E\u5723\u5C5E\u6027\u4F24\u5BB3"
         phase: 1
         targetSelection: 0
-        scaler: 1.8
+        chance: 1
+        scaler: 3.5
         damageType:
           tagName: DamageType.Divine

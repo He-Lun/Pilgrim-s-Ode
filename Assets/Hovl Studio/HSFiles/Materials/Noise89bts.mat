@@ -21,14 +21,15 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Noise89bts
-  m_Shader: {fileID: -6465566751694194690, guid: 23b841a5164f097488432f6f3df2e185, type: 3}
+  m_Shader: {fileID: -6465566751694194690, guid: 23b841a5164f097488432f6f3df2e185,
+    type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords:
-  - _BUILTIN_SURFACE_TYPE_TRANSPARENT
-  - _SURFACE_TYPE_TRANSPARENT
+  m_ValidKeywords: []
   m_InvalidKeywords:
+  - _BUILTIN_SURFACE_TYPE_TRANSPARENT
   - _DOUBLESIDED_ON
+  - _SURFACE_TYPE_TRANSPARENT
   - _USECUSTOMDATA_ON
   - _USEFRESNEL_ON
   - _USESMOOTHCORNERS_ON
@@ -38,13 +39,11 @@ Material:
   m_CustomRenderQueue: -1
   stringTagMap:
     MotionVector: User
-    RenderType: Transparent
   disabledShaderPasses:
   - TransparentDepthPrepass
   - TransparentDepthPostpass
   - TransparentBackface
   - MOTIONVECTORS
-  - DepthOnly
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
@@ -217,7 +216,6 @@ Material:
     - _FrontFacesColor: {r: 0.9056604, g: 0.85866857, b: 0.85866857, a: 1}
     - _SpeedMainTexUVNoiseZW: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
-  m_AllowLocking: 1
 --- !u!114 &1411326371413842828
 MonoBehaviour:
   m_ObjectHideFlags: 11

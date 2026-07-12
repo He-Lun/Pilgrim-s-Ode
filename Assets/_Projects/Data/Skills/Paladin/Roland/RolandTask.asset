@@ -18,7 +18,7 @@ MonoBehaviour:
   - rid: 3699152034441199631
   requireAllObjectives: 1
   repeatable: 1
-  actionPointReward: 3
+  actionPointReward: 0
   actionPriorityBoost: 1
   references:
     version: 2

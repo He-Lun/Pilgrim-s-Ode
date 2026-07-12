@@ -28,8 +28,7 @@ MonoBehaviour:
   - tagName: DamageType.Divine
   animTrigger: SkillIndex
   skillAnimIndex: 1
-  defaultCastVfx: {fileID: 0}
-  defaultHitVfx: {fileID: 0}
+  defaultVfx: []
   effects:
   - rid: 3699151960701927431
   references:
@@ -38,9 +37,10 @@ MonoBehaviour:
     - rid: 3699151960701927431
       type: {class: DamageEffect, ns: , asm: Assembly-CSharp}
       data:
-        description: "\u9020\u6210\u4E00\u6B21110%\u653B\u51FB\u529B\u7684\u7269\u7406\u4F24\u5BB3"
+        description: "\u9020\u6210\u4E00\u6B21180%\u653B\u51FB\u529B\u7684\u7269\u7406\u4F24\u5BB3"
         phase: 1
         targetSelection: 0
-        scaler: 1.1
+        chance: 1
+        scaler: 1.8
         damageType:
           tagName: DamageType.Physical

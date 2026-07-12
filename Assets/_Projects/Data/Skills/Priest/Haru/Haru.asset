@@ -15,25 +15,56 @@ MonoBehaviour:
   name: "\u693F"
   description: "\u6765\u81EA\u4F0A\u95E8\u7684\u5DEB\u5973"
   job:
-    tagName: Job.priest
+    tagName: Job.Priest
   kingdom:
-    tagName: YiMen
-  baseHealth: 500
-  baseAttack: 50
-  baseDefense: 20
+    tagName: Kingdom.YiMen
+  baseHealth: 4900
+  baseAttack: 35
+  baseDefense: 40
   baseAgility: 130
   baseSpeed: 15
   jobAbilityPool: {fileID: 11400000, guid: 8abf17d8e340be244a5ff036f0553b63, type: 2}
   exclusiveAbilities: []
   abilityPresentations:
   - ability: {fileID: 11400000, guid: a1f41699984aa724aaa2bcd24a225284, type: 2}
-    skillAnimIndex: 1
-    animTrigger: 
-    castVfxPrefab: {fileID: 0}
-    hitVfxPrefab: {fileID: 0}
-    castSpawnPoint: 0
-    hitSpawnPoint: 0
-    hitHeightOffset: 0
+    skillAnimIndex: 2
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 1645009922904612, guid: 5e3170c6ef0f014409bd7423e3bb805a, type: 3}
+      timing: 0
+      anchor:
+        type: 0
+        attachPointId: 
+        localOffset: {x: 0, y: -0.32, z: 0}
+      attachMode: 0
+      rotationMode: 3
+      autoDestroySeconds: 0
+  - ability: {fileID: 11400000, guid: 9408656b27d24234185a40d668e898cd, type: 2}
+    skillAnimIndex: 4
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 1687490866974584, guid: 2eeec577995fc7043a57cbe56af9a29c, type: 3}
+      timing: 1
+      anchor:
+        type: 5
+        attachPointId: Stomach
+        localOffset: {x: 0, y: -1.1, z: 0}
+      attachMode: 1
+      rotationMode: 3
+      autoDestroySeconds: 1
+  - ability: {fileID: 11400000, guid: 7b24a32bfa38e134099d740493d9377a, type: 2}
+    skillAnimIndex: 5
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 1687490866974584, guid: 2eeec577995fc7043a57cbe56af9a29c, type: 3}
+      timing: 1
+      anchor:
+        type: 5
+        attachPointId: Stomach
+        localOffset: {x: 0, y: -1.1, z: 0}
+      attachMode: 1
+      rotationMode: 3
+      autoDestroySeconds: 1
   innateAbilities: []
   inspirationAbility: {fileID: 11400000, guid: 6fe6fc68e8bbdec4ba5463ca52ca8325, type: 2}
   inspirationTask: {fileID: 11400000, guid: 2c018e079ef211e4a811fda6d69b0b8e, type: 2}

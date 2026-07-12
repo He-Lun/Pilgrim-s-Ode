@@ -128,17 +128,7 @@ public class InspirationTaskTracker
         if (!taskDef.repeatable)
             isCompleted = true;
 
-        if (inspirationAbility != null)
-        {
-            var targets = new List<AbilitySystemComponent> { owner };
-            inspirationAbility.TryActivateAsInspiration(owner, targets);
-        }
-
-        if (owner.TeamResource != null)
-            owner.TeamResource.AddActionPoints(taskDef.actionPointReward);
-
-        if (ActionQueue.Instance != null)
-            ActionQueue.Instance.ForceImmediateTurn(owner, taskDef.actionPriorityBoost);
+        TurnManager.Instance?.OnInspirationCompleted(owner, inspirationAbility, taskDef);
 
         OnTaskCompleted?.Invoke();
         Debug.Log($"[InspirationTask] {owner.gameObject.name} 完成激励任务: {taskDef.taskName}");

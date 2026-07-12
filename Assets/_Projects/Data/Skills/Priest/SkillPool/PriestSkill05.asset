@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78dd6cfcb7b7f294fab2f298d384ab35, type: 3}
+  m_Name: PriestSkill05
+  m_EditorClassIdentifier: 
+  abilityName: "\u8776\u795E\u8D50\u798F\u2014\u2014\u6C38\u6052"
+  description: "\u9501\u5B9A\u4E00\u540D\u53CB\u65B9\u89D2\u8272\u542F\u52A8\u7948\u798F\u4EEA\u5F0F\uFF0C\u5728\u4EEA\u5F0F\u671F\u95F4\uFF0C\u8BE5\u89D2\u8272\u6240\u6709\u589E\u76CA\u6548\u679C\u56DE\u5408\u6570\u4E0D\u4F1A\u51CF\u5C11\uFF0C\u4EEA\u5F0F\u53EF\u88AB\u653B\u51FB\u6253\u65AD"
+  icon: {fileID: 0}
+  actionPointCost: 0
+  isInstant: 1
+  targetScope: 2
+  areaRadius: 35
+  areaRadiusMeters: 5
+  areaWidthMeters: 2
+  requiredTags:
+  - tagName: Job.Priest
+  blockTags: []
+  abilityTags:
+  - tagName: God.YiMenGod.Butterfly
+  - tagName: Buff.BlessingWard
+  animTrigger: SkillIndex
+  skillAnimIndex: 6
+  defaultVfx: []
+  effects:
+  - rid: 3699152096997408772
+  references:
+    version: 2
+    RefIds:
+    - rid: 3699152096997408772
+      type: {class: RitualAbilityEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u542F\u52A8\u7948\u798F\u4EEA\u5F0F\uFF0C\u5728\u4EEA\u5F0F\u671F\u95F4\uFF0C\u76EE\u6807\u53CB\u65B9\u89D2\u8272\u589E\u76CA\u6548\u679C\u56DE\u5408\u6570\u4E0D\u4F1A\u51CF\u5C11\uFF0C\u4EEA\u5F0F\u53EF\u88AB\u653B\u51FB\u6253\u65AD"
+        phase: 0
+        targetSelection: 0
+        chance: 1
+        channelTag:
+          tagName: State.Channeling
+        wardTag:
+          tagName: Buff.BlessingWard
+        durationTurns: 999

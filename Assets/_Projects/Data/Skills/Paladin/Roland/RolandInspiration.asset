@@ -43,12 +43,8 @@ MonoBehaviour:
         description: "\u83B7\u5F97100%\u653B\u51FB\u529B\u52A0\u6210\uFF0C\u6301\u7EED\u4E09\u56DE\u5408"
         phase: 1
         targetSelection: 0
-        attributeName: Attack
-        multiplicativeBonus: 1
-        durationTurns: 3
-        buffTag:
-          tagName: Buff.AttackUp
-        buffVfx:
+        chance: 1
+        targetVfx:
           prefab: {fileID: 8779886354908515619, guid: 189611b421aefc24ca1e8013839b0e0b,
             type: 3}
           timing: 0
@@ -59,56 +55,75 @@ MonoBehaviour:
           attachMode: 1
           rotationMode: 0
           autoDestroySeconds: 3
+        attributeName: Attack
+        multiplicativeBonus: 1
+        durationTurns: 3
+        buffTag:
+          tagName: Buff.AttackUp.SurfaciaBlessing
     - rid: 3699152034441199634
       type: {class: BuffAbilityEffect, ns: , asm: Assembly-CSharp}
       data:
         description: "\u83B7\u5F97100%\u9632\u5FA1\u529B\u52A0\u6210\uFF0C\u6301\u7EED\u4E09\u56DE\u5408"
         phase: 1
         targetSelection: 0
-        attributeName: Defense
-        multiplicativeBonus: 1
-        durationTurns: 3
-        buffTag:
-          tagName: Buff.DefenseUp
-        buffVfx:
-          prefab: {fileID: 9051272139665918653, guid: d387ce816b95b294888eec424bd43715,
+        chance: 1
+        targetVfx:
+          prefab: {fileID: 1146985597798048, guid: 31ccb42e93d278e4fa39ae0773fae1b5,
             type: 3}
           timing: 0
           anchor:
             type: 0
             attachPointId: Stomach
-            localOffset: {x: 0, y: 1, z: 0}
+            localOffset: {x: 0, y: 0, z: 0}
           attachMode: 1
           rotationMode: 0
           autoDestroySeconds: 3
+        attributeName: Defense
+        multiplicativeBonus: 1
+        durationTurns: 3
+        buffTag:
+          tagName: Buff.DefenseUp.SurfaciaBlessing
     - rid: 3699152034441199635
       type: {class: BuffAbilityEffect, ns: , asm: Assembly-CSharp}
       data:
         description: "\u83B7\u5F97100%\u901F\u5EA6\u52A0\u6210\uFF0C\u6301\u7EED\u4E09\u56DE\u5408"
         phase: 1
         targetSelection: 0
-        attributeName: Agility
-        multiplicativeBonus: 1
-        durationTurns: 3
-        buffTag:
-          tagName: Buff.AgilityUp
-        buffVfx:
-          prefab: {fileID: 948173124597725933, guid: 34b67c9097fda7840a1a2cf55fc0c6b1,
+        chance: 1
+        targetVfx:
+          prefab: {fileID: 1707000239251520, guid: 7ca99580e6cb71e49a3da241e1ce24a1,
             type: 3}
           timing: 0
           anchor:
             type: 0
             attachPointId: Stomach
-            localOffset: {x: 0, y: 1, z: 0}
+            localOffset: {x: 0, y: 0, z: 0}
           attachMode: 1
           rotationMode: 0
           autoDestroySeconds: 3
+        attributeName: Agility
+        multiplicativeBonus: 1
+        durationTurns: 3
+        buffTag:
+          tagName: Buff.AgilityUp.SurfaciaBlessing
     - rid: 3699152034441199636
       type: {class: HealAbilityEffect, ns: , asm: Assembly-CSharp}
       data:
         description: "\u56DE\u590D50%\u751F\u547D\u503C\u4E0A\u9650\u7684\u751F\u547D\u503C"
         phase: 1
         targetSelection: 0
+        chance: 1
+        targetVfx:
+          prefab: {fileID: 4275290558304579315, guid: f9903cfc2e30b984399da1d7a8de06ec,
+            type: 3}
+          timing: 0
+          anchor:
+            type: 0
+            attachPointId: 
+            localOffset: {x: 0, y: 1, z: 0}
+          attachMode: 0
+          rotationMode: 0
+          autoDestroySeconds: 3
         healMode: 1
         healAmount: 0
         healPercentOfMaxHealth: 0.5

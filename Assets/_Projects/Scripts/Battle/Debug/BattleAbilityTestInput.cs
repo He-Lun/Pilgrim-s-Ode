@@ -64,6 +64,10 @@ public class BattleAbilityTestInput : MonoBehaviour
         if (!IsTargeting) return;
         if (!CanUseBattleInput(out AbilitySystemComponent actor)) return;
 
+        // 选目标模式下 Move 输入被关掉，点地/点目标都在这里取消引导
+        if (Input.GetMouseButtonDown(0) && actor.IsChanneling)
+            actor.InterruptRitualIfAny();
+
         if (armedAbility.targetScope == TargetScope.DirectedRect)
         {
             UpdateDirectedRectAim(actor);
@@ -113,9 +117,11 @@ public class BattleAbilityTestInput : MonoBehaviour
                 return;
             }
 
-            if (ability.targetScope == TargetScope.AreaAroundSelf)
+            if (ability.targetScope == TargetScope.AreaAroundSelf
+                || ability.targetScope == TargetScope.AllAllies
+                || ability.targetScope == TargetScope.AllEnemies)
             {
-                TryCastAreaAroundSelf(actor, ability);
+                TryCastGlobalScope(actor, ability);
                 return;
             }
 
@@ -154,6 +160,8 @@ public class BattleAbilityTestInput : MonoBehaviour
 
         if (ability.targetScope != TargetScope.Self
             && ability.targetScope != TargetScope.AreaAroundSelf
+            && ability.targetScope != TargetScope.AllAllies
+            && ability.targetScope != TargetScope.AllEnemies
             && ability.targetScope != TargetScope.DirectedRect
             && ability.targetScope != TargetScope.Area
             && validTargets.Count == 0)
@@ -168,7 +176,7 @@ public class BattleAbilityTestInput : MonoBehaviour
         lastResultMessage = $"已选择「{ability.abilityName}」，点击高亮敌人释放（{validTargets.Count} 个可选），{cancelKey} 取消。";
     }
 
-    private void TryCastAreaAroundSelf(AbilitySystemComponent caster, GameplayAbility ability)
+    private void TryCastGlobalScope(AbilitySystemComponent caster, GameplayAbility ability)
     {
         if (!CanCasterUseAbility(caster, ability, out string reason))
         {
@@ -185,9 +193,12 @@ public class BattleAbilityTestInput : MonoBehaviour
             return;
         }
 
-        lastResultMessage = $"释放「{ability.abilityName}」（自身范围）";
+        lastResultMessage = $"释放「{ability.abilityName}」";
         TurnManager.Instance?.NotifyActionResolved();
     }
+
+    private void TryCastAreaAroundSelf(AbilitySystemComponent caster, GameplayAbility ability)
+        => TryCastGlobalScope(caster, ability);
 
     private void BeginDirectedRectTargeting(AbilitySystemComponent caster, GameplayAbility ability)
     {
@@ -423,6 +434,9 @@ public class BattleAbilityTestInput : MonoBehaviour
         var motor = caster.GetComponent<CharacterMotor>();
         if (motor != null)
         {
+            // 选技能/释放前先取消引导，避免被 Ability 态门闩挡住而无法走到 ActivateAbility
+            caster.InterruptRitualIfAny();
+
             if (motor.IsDead)
             {
                 reason = "角色已阵亡。";

@@ -2,54 +2,42 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 在角色身上播放技能 VFX — 由 CharacterMotor / 动画事件按时机调用。
-/// 数据驱动：从 AbilityPresentationEntry.GetEffectiveVfx() 取一组 VfxSpawnEntry，
-/// 逐条按锚点(语义/命名挂点)解析位置、按配置决定朝向、是否跟随，然后生成。
+/// 角色特效播放器 — 技能时机特效 + 类别 Buff 持续特效（查 BuffPresentationCatalog）。
 /// </summary>
+[RequireComponent(typeof(AbilitySystemComponent))]
 public class AbilityVfxPlayer : MonoBehaviour
 {
-    [Header("挂点")]
-    [Tooltip("命名挂点表（剑尖/胸口/脚等）。留空则在自身及子物体上自动查找")]
+    [SerializeField] private BuffPresentationCatalog presentationCatalog;
     [SerializeField] private AbilityVfxAttachPoints attachPoints;
-
-    [Header("默认值")]
-    [Tooltip("TargetChest / CasterGround 未配偏移时的默认胸口高度（米）")]
     [SerializeField] private float defaultChestHeight = 1.2f;
-    [Tooltip("实例存活上限（秒）兜底。单条 VfxSpawnEntry 可覆盖")]
     [SerializeField] private float defaultAutoDestroySeconds = 3f;
 
-    // 持续型 buff 特效：按 buff 来源标签管理，生命周期与角色身上的 buff 一致。
-    private readonly Dictionary<GameplayTag, GameObject> activeBuffVfx = new Dictionary<GameplayTag, GameObject>();
-    private AttributeSet attributes;
+    private readonly Dictionary<GameplayTag, GameObject> activeCategoryVfx = new Dictionary<GameplayTag, GameObject>();
+    private AbilitySystemComponent asc;
 
     void Awake()
     {
-        if (attachPoints == null)
-            attachPoints = GetComponentInChildren<AbilityVfxAttachPoints>(true);
-
-        attributes = GetComponent<AttributeSet>();
+        asc = GetComponent<AbilitySystemComponent>();
     }
 
     void OnEnable()
     {
-        if (attributes != null)
-            attributes.OnModifierRemoved += StopBuffVfx;
+        CombatEventBus.Instance.OnEvent += HandleCombatEvent;
+        if (asc != null)
+            asc.OnTagRemoved += HandleTagRemoved;
     }
 
     void OnDisable()
     {
-        if (attributes != null)
-            attributes.OnModifierRemoved -= StopBuffVfx;
+        CombatEventBus.Instance.OnEvent -= HandleCombatEvent;
+        if (asc != null)
+            asc.OnTagRemoved -= HandleTagRemoved;
     }
 
-    void OnDestroy()
-    {
-        activeBuffVfx.Clear();
-    }
+    void OnDestroy() => activeCategoryVfx.Clear();
 
-    // ── 对外入口 ────────────────────────────────────
+    public void BindCatalog(BuffPresentationCatalog catalog) => presentationCatalog = catalog;
 
-    /// <summary>按时机播放该技能表现下所有匹配的特效。</summary>
     public void PlayTiming(
         VfxTiming timing,
         AbilityPresentationEntry presentation,
@@ -65,49 +53,17 @@ public class AbilityVfxPlayer : MonoBehaviour
         {
             var entry = entries[i];
             if (entry == null || !entry.IsValid || entry.timing != timing) continue;
-            SpawnEntry(entry, context, caster);
+            SpawnOneShot(entry, context, caster);
         }
     }
 
-    // ── Buff 持续特效 ────────────────────────────────
-
-    /// <summary>
-    /// 播放持续型 buff 特效 —— 保持 loop、不定时销毁，随该来源标签的 buff 存续。
-    /// 由 BuffAbilityEffect 在施加 buff 时对目标调用。位置锚点以被 buff 的角色自身为参照。
-    /// </summary>
-    public void PlayBuffVfx(GameplayTag buffTag, VfxSpawnEntry entry)
-    {
-        if (entry == null || !entry.IsValid) return;
-
-        // 同标签已有特效则先移除（buff 刷新时不叠加）。
-        StopBuffVfx(buffTag);
-
-        var instance = CreateInstance(entry, AbilityActivationContext.Self(), transform);
-        if (instance != null)
-            activeBuffVfx[buffTag] = instance;
-    }
-
-    /// <summary>销毁某来源标签的 buff 特效（由 AttributeSet.OnModifierRemoved 驱动）。</summary>
-    public void StopBuffVfx(GameplayTag buffTag)
-    {
-        if (activeBuffVfx.TryGetValue(buffTag, out var instance))
-        {
-            if (instance != null)
-                Destroy(instance);
-            activeBuffVfx.Remove(buffTag);
-        }
-    }
-
-    // ── 供弹体等外部系统复用 ─────────────────────────
-
-    /// <summary>解析锚点的世界位置与朝向（以本角色为参照），供弹体发射点(枪口)等使用。</summary>
     public bool TryGetAnchorWorld(VfxAnchor anchor, AbilityActivationContext context, out Vector3 position, out Quaternion rotation)
     {
-        ResolveAnchor(anchor, context, transform, out _, out position, out rotation);
+        if (!TryResolveAnchor(anchor, context, transform, out _, out position, out rotation))
+            return false;
         return true;
     }
 
-    /// <summary>在指定世界坐标生成一次性特效（关闭 loop、按粒子时长自动销毁），供弹体命中等场景复用。</summary>
     public static GameObject SpawnOneShotAt(GameObject prefab, Vector3 position, Quaternion rotation, float autoDestroySeconds = 3f)
     {
         if (prefab == null) return null;
@@ -119,9 +75,44 @@ public class AbilityVfxPlayer : MonoBehaviour
         return instance;
     }
 
-    // ── 生成 ────────────────────────────────────────
+    private void HandleCombatEvent(CombatEvent evt)
+    {
+        if (evt.type != CombatEventType.BuffApplied || evt.target != asc) return;
 
-    private void SpawnEntry(VfxSpawnEntry entry, AbilityActivationContext context, Transform caster)
+        if (string.IsNullOrEmpty(evt.tag.TagName))
+        {
+            if (evt.effectVfx != null && evt.effectVfx.IsValid)
+                SpawnOneShot(evt.effectVfx, AbilityActivationContext.Self(), transform);
+            return;
+        }
+
+        if (presentationCatalog == null) return;
+
+        var category = BuffCategoryTag.Resolve(evt.tag);
+        if (activeCategoryVfx.ContainsKey(category)) return;
+        if (!presentationCatalog.TryGet(category, out var entry)) return;
+
+        var instance = CreateInstance(entry, AbilityActivationContext.Self(), transform);
+        if (instance != null)
+            activeCategoryVfx[category] = instance;
+    }
+
+    private void HandleTagRemoved(GameplayTag tag)
+    {
+        var category = BuffCategoryTag.Resolve(tag);
+        if (asc.HasActiveEffectCategory(category)) return;
+        StopCategory(category);
+    }
+
+    private void StopCategory(GameplayTag category)
+    {
+        if (!activeCategoryVfx.TryGetValue(category, out var instance)) return;
+        if (instance != null)
+            Destroy(instance);
+        activeCategoryVfx.Remove(category);
+    }
+
+    private void SpawnOneShot(VfxSpawnEntry entry, AbilityActivationContext context, Transform caster)
     {
         var instance = CreateInstance(entry, context, caster);
         if (instance == null) return;
@@ -132,44 +123,29 @@ public class AbilityVfxPlayer : MonoBehaviour
         Destroy(instance, destroyAfter);
     }
 
-    /// <summary>按 entry 的锚点/朝向/挂接方式实例化特效（不含销毁调度），供一次性与持续型复用。</summary>
     private GameObject CreateInstance(VfxSpawnEntry entry, AbilityActivationContext context, Transform caster)
     {
         if (entry == null || entry.prefab == null) return null;
+        if (!TryResolveAnchor(entry.anchor, context, caster, out Transform parent, out Vector3 position, out Quaternion anchorRot))
+            return null;
 
-        ResolveAnchor(entry.anchor, context, caster, out Transform parent, out Vector3 position, out Quaternion anchorRot);
-
-        // 所有 Mode 的最终朝向 = Mode 基朝向 × prefab.localRotation，
-        // 保留资源自带偏移（如 Hovl Sword Slash 的 Y=-90）。
         Quaternion prefabLocal = entry.prefab.transform.localRotation;
-        Quaternion modeRot = ResolveModeRotation(entry, context, caster, anchorRot);
-        Quaternion worldRot = modeRot * prefabLocal;
+        Quaternion worldRot = ResolveModeRotation(entry, context, caster, anchorRot) * prefabLocal;
 
-        GameObject instance;
         if (entry.attachMode == VfxAttachMode.Parented && parent != null)
         {
-            instance = Instantiate(entry.prefab, parent);
+            var instance = Instantiate(entry.prefab, parent);
             instance.transform.localPosition = entry.anchor.localOffset;
-            if (entry.rotationMode == VfxRotationMode.PrefabDefault)
-                instance.transform.localRotation = prefabLocal;
-            else
-                instance.transform.rotation = worldRot;
-        }
-        else
-        {
-            instance = Instantiate(entry.prefab, position, worldRot);
+            instance.transform.rotation = entry.rotationMode == VfxRotationMode.PrefabDefault
+                ? prefabLocal
+                : worldRot;
+            return instance;
         }
 
-        return instance;
+        return Instantiate(entry.prefab, position, worldRot);
     }
 
-    // ── 锚点解析 ─────────────────────────────────────
-
-    /// <summary>
-    /// 解析锚点 → 父物体(可空)、世界位置、锚点旋转。
-    /// localOffset 在 Parented 分支由调用方按局部处理；此处对 Detached 已并入世界位置。
-    /// </summary>
-    private void ResolveAnchor(
+    private bool TryResolveAnchor(
         VfxAnchor anchor,
         AbilityActivationContext context,
         Transform caster,
@@ -178,79 +154,62 @@ public class AbilityVfxPlayer : MonoBehaviour
         out Quaternion rotation)
     {
         parent = null;
+        position = Vector3.zero;
         rotation = Quaternion.identity;
         Vector3 basePos = caster != null ? caster.position : transform.position;
 
         switch (anchor.type)
         {
             case VfxAnchorType.CasterRoot:
-                parent = caster;
-                basePos = caster != null ? caster.position : transform.position;
-                if (caster != null) rotation = caster.rotation;
+                parent = caster != null ? caster : transform;
+                basePos = parent.position;
+                rotation = parent.rotation;
                 break;
 
             case VfxAnchorType.CasterGround:
                 basePos = caster != null ? caster.position : transform.position;
                 basePos.y = 0f;
-                if (caster != null) rotation = caster.rotation;
+                rotation = caster != null ? caster.rotation : transform.rotation;
                 break;
 
             case VfxAnchorType.TargetRoot:
-            {
-                Transform target = GetPrimaryTargetTransform(context);
-                if (target != null)
-                {
-                    parent = target;
-                    basePos = target.position;
-                    rotation = target.rotation;
-                }
-                break;
-            }
-
             case VfxAnchorType.TargetChest:
             {
                 Transform target = GetPrimaryTargetTransform(context);
-                if (target != null)
-                {
-                    parent = target;
-                    basePos = target.position + Vector3.up * defaultChestHeight;
-                    rotation = target.rotation;
-                }
+                if (target == null) return false;
+                parent = target;
+                basePos = target.position;
+                if (anchor.type == VfxAnchorType.TargetChest)
+                    basePos += Vector3.up * defaultChestHeight;
+                rotation = target.rotation;
                 break;
             }
 
             case VfxAnchorType.MouseWorldPoint:
-                if (context.hasTargetPoint)
-                    basePos = context.targetWorldPoint;
-                else if (context.hasAimDirection && caster != null)
-                    basePos = caster.position + context.aimDirectionWorld;
+                if (!context.hasTargetPoint && !(context.hasAimDirection && caster != null))
+                    return false;
+                basePos = context.hasTargetPoint
+                    ? context.targetWorldPoint
+                    : caster.position + context.aimDirectionWorld;
                 break;
 
             case VfxAnchorType.NamedPoint:
-                if (attachPoints != null && attachPoints.TryGet(anchor.attachPointId, out Transform point) && point != null)
-                {
-                    parent = point;
-                    basePos = point.position;
-                    rotation = point.rotation;
-                }
-                else
-                {
-                    Debug.LogWarning($"[AbilityVfxPlayer] 未找到命名挂点 '{anchor.attachPointId}'，回退到施法者根节点。", this);
-                    parent = caster;
-                    basePos = caster != null ? caster.position : transform.position;
-                    if (caster != null) rotation = caster.rotation;
-                }
+                if (attachPoints == null || string.IsNullOrEmpty(anchor.attachPointId)
+                    || !attachPoints.TryGet(anchor.attachPointId, out Transform point) || point == null)
+                    return false;
+                parent = point;
+                basePos = point.position;
+                rotation = point.rotation;
                 break;
+
+            default:
+                return false;
         }
 
-        // Detached 生成时把偏移并入世界位置（Parented 分支自行用 localOffset）。
         position = basePos + anchor.localOffset;
+        return true;
     }
 
-    /// <summary>
-    /// 解析 Mode 基朝向（不含 prefab 本地旋转）。
-    /// PrefabDefault 返回 Identity，由调用方再乘 prefab.localRotation。
-    /// </summary>
     private Quaternion ResolveModeRotation(
         VfxSpawnEntry entry,
         AbilityActivationContext context,
@@ -278,14 +237,13 @@ public class AbilityVfxPlayer : MonoBehaviour
             case VfxRotationMode.FaceAimDirection:
             {
                 Vector3 dir = context.hasAimDirection ? context.aimDirectionWorld
-                    : (caster != null ? caster.forward : Vector3.forward);
+                    : caster != null ? caster.forward : Vector3.forward;
                 dir.y = 0f;
                 if (dir.sqrMagnitude > 0.0001f)
                     return Quaternion.LookRotation(dir.normalized, Vector3.up);
                 return caster != null ? caster.rotation : Quaternion.identity;
             }
 
-            case VfxRotationMode.PrefabDefault:
             default:
                 return Quaternion.identity;
         }
@@ -294,18 +252,17 @@ public class AbilityVfxPlayer : MonoBehaviour
     private static Transform GetPrimaryTargetTransform(AbilityActivationContext context)
     {
         var targets = context.GetExplicitTargets();
-        if (targets == null || targets.Count == 0) return null;
+        if (targets == null) return null;
 
-        foreach (var asc in targets)
+        for (int i = 0; i < targets.Count; i++)
         {
-            if (asc != null)
-                return asc.transform;
+            if (targets[i] != null)
+                return targets[i].transform;
         }
 
         return null;
     }
 
-    /// <summary>关闭 Loop，估算播完所需时间。</summary>
     private static float PrepareOneShotParticles(GameObject root)
     {
         float maxEnd = 0.5f;

@@ -67,9 +67,12 @@ public class BattleInputController : MonoBehaviour
 
     private void HandleMoveInput(AbilitySystemComponent actor)
     {
+        // 点地取消引导：放在所有 early-return 之前
+        if (actor.IsChanneling)
+            actor.InterruptRitualIfAny();
+
         var movement = actor.GetComponent<CharacterMovementController>();
         if (movement == null || movement.IsMoving) return;
-
         if (!TryRaycastGround(out Vector3 hitPoint)) return;
 
         movement.TryMoveToWorldPoint(hitPoint);

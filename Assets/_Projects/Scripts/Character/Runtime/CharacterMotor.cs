@@ -41,9 +41,18 @@ public class CharacterMotor : MonoBehaviour
         TurnManager.Instance != null
         && TurnManager.Instance.Phase == TurnPhase.TurnAction
         && TurnManager.Instance.CurrentActor == asc
-        && !IsDead;
+        && !IsDead
+        && !IsStunned;
 
-    /// <summary>本回合是否可发起移动（回合权限 + 未在移动 + FSM 允许切 Move）。</summary>
+    public bool IsStunned =>
+        asc != null && asc.HasTag(GameplayTag.Debuff.Stun);
+
+    public bool HasHyperArmor => HyperArmor.IsActive(asc);
+
+    public bool IsChanneling =>
+        asc != null && asc.IsChanneling;
+
+    /// <summary>本回合是否可发起移动。引导中不封锁：点地/移动会先取消引导。</summary>
     public bool CanAcceptMove =>
         CanPerformPlayerAction
         && !isMoving
@@ -52,7 +61,7 @@ public class CharacterMotor : MonoBehaviour
     /// <summary>是否可进入技能表现（含插入行动；移动中不可施法）。</summary>
     public bool CanAcceptAbilityPresentation()
     {
-        if (IsDead || isMoving || stateMachine.CurrentType == CharacterStateType.Ability)
+        if (IsDead || IsStunned || isMoving || stateMachine.CurrentType == CharacterStateType.Ability)
             return false;
 
         bool isInsert = TurnManager.Instance != null
@@ -82,13 +91,31 @@ public class CharacterMotor : MonoBehaviour
             new AbilityState(),
             new HitState(),
             new DeathState(),
-            new KnockbackState()
+            new KnockbackState(),
+            new StunState()
         });
         stateMachine.TryTransition(CharacterStateType.Idle, default, force: true);
     }
 
-    void OnEnable() => CombatEventBus.Instance.OnEvent += HandleCombatEvent;
-    void OnDisable() => CombatEventBus.Instance.OnEvent -= HandleCombatEvent;
+    void OnEnable()
+    {
+        CombatEventBus.Instance.OnEvent += HandleCombatEvent;
+        if (asc != null)
+        {
+            asc.OnTagAdded += HandleTagAdded;
+            asc.OnTagRemoved += HandleTagRemoved;
+        }
+    }
+
+    void OnDisable()
+    {
+        CombatEventBus.Instance.OnEvent -= HandleCombatEvent;
+        if (asc != null)
+        {
+            asc.OnTagAdded -= HandleTagAdded;
+            asc.OnTagRemoved -= HandleTagRemoved;
+        }
+    }
 
     void Update() => stateMachine.Tick(Time.deltaTime);
 
@@ -97,6 +124,8 @@ public class CharacterMotor : MonoBehaviour
     public bool MoveAlongWorldPath(List<Vector3> waypoints, float costMeters)
     {
         if (waypoints == null || waypoints.Count == 0) return false;
+
+        asc?.InterruptRitualIfAny();
         if (!CanAcceptMove) return false;
 
         var payload = CharacterStatePayload.ForWorldPath(waypoints, costMeters);
@@ -133,6 +162,12 @@ public class CharacterMotor : MonoBehaviour
     public void ReturnToIdle()
     {
         if (IsDead) return;
+        if (IsStunned)
+        {
+            BeginStunPresentation();
+            return;
+        }
+
         stateMachine.TryTransition(CharacterStateType.Idle, default, force: true);
     }
 
@@ -218,7 +253,7 @@ public class CharacterMotor : MonoBehaviour
 
     public void BeginHitPresentation()
     {
-        if (IsDead) return;
+        if (IsDead || HasHyperArmor) return;
 
         if (stateMachine.CurrentType == CharacterStateType.Hit)
         {
@@ -226,7 +261,14 @@ public class CharacterMotor : MonoBehaviour
             return;
         }
 
-        stateMachine.TryTransition(CharacterStateType.Hit, default, force: true);
+        if (!stateMachine.TryTransition(CharacterStateType.Hit, default, force: true))
+            return;
+
+        CombatEventBus.Instance.Raise(new CombatEvent
+        {
+            type = CombatEventType.HitReacted,
+            target = asc
+        });
     }
 
     /// <summary>动画事件 OnHitComplete — 逻辑收招 + 驱动 Animator 离开 Hit。</summary>
@@ -240,6 +282,54 @@ public class CharacterMotor : MonoBehaviour
     public void BeginDeathPresentation()
     {
         stateMachine.TryTransition(CharacterStateType.Death, default, force: true);
+    }
+
+    // ── 眩晕 ──────────────────────────────────────────
+
+    public void BeginStunPresentation()
+    {
+        if (IsDead || HasHyperArmor) return;
+        if (stateMachine.CurrentType == CharacterStateType.Stun) return;
+
+        NotifyMovementInterrupted();
+        ClearActiveAbilityPresentation();
+        if (!stateMachine.TryTransition(CharacterStateType.Stun, default, force: true))
+            return;
+
+        CombatEventBus.Instance.Raise(new CombatEvent
+        {
+            type = CombatEventType.StunEntered,
+            target = asc
+        });
+    }
+
+    /// <summary>引导被打断后退出技能表现，回到 Idle。</summary>
+    public void ReleaseFromChannel()
+    {
+        ClearActiveAbilityPresentation();
+        asc?.ClearPendingAbility();
+        if (stateMachine.CurrentType == CharacterStateType.Ability)
+            stateMachine.TryTransition(CharacterStateType.Idle, default, force: true);
+    }
+
+    private void HandleTagAdded(GameplayTag tag)
+    {
+        if (!tag.Matches(GameplayTag.Debuff.Stun)) return;
+        if (HasHyperArmor)
+        {
+            asc?.RemoveTag(tag);
+            return;
+        }
+
+        BeginStunPresentation();
+    }
+
+    private void HandleTagRemoved(GameplayTag tag)
+    {
+        if (!tag.Matches(GameplayTag.Debuff.Stun)) return;
+        if (stateMachine.CurrentType != CharacterStateType.Stun) return;
+
+        stateMachine.TryTransition(CharacterStateType.Idle, default, force: true);
     }
 
     // ── 内部 ──────────────────────────────────────────
@@ -298,6 +388,8 @@ public class CharacterMotor : MonoBehaviour
     {
         if (path == null || path.Count < 2) return false;
         if (!CanAcceptMove) return false;
+
+        asc?.InterruptRitualIfAny();
 
         var payload = CharacterStatePayload.ForMove(path);
         if (!stateMachine.TryTransition(CharacterStateType.Move, payload))

@@ -46,6 +46,7 @@ public class ProjectileAbilityEffect : AbilityEffect
         GameplayAbility sourceAbility,
         AbilityActivationContext context)
     {
+        if (!RollChance()) return;
         if (caster == null || projectilePrefab == null) return;
 
         // 发射点解析（复用角色的 VFX 挂点系统）

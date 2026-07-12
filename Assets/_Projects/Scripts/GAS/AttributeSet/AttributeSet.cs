@@ -182,19 +182,37 @@ using UnityEngine;
             return false;
         }
 
+        /// <summary>是否仍有属于该类别的活跃修改器（用于类别特效停播判断）。</summary>
+        public bool HasModifierInCategory(GameplayTag category)
+        {
+            if (string.IsNullOrEmpty(category.TagName)) return false;
+
+            foreach (var mod in modifiers)
+            {
+                if (mod.IsExpired()) continue;
+                if (BuffCategoryTag.BelongsToCategory(mod.sourceTag, category))
+                    return true;
+            }
+
+            return false;
+        }
+
         public void RemoveAllModifiers()
         {
             modifiers.Clear();
         }
 
         // ---------- 生命周期更新 ----------
-        //由TurnManager调用
-        public void TickModifiers(int turn)
+        //由TurnManager调用。pauseBuffDurations 时跳过 Buff.* 来源修改器的回合递减。
+        public void TickModifiers(int turn, bool pauseBuffDurations = false)
         {
             List<GameplayTag> expiredTags = null;
             for (int i = 0; i < modifiers.Count; i++)
             {
                 var mod = modifiers[i];
+                if (pauseBuffDurations && IsBuffPrefixedModifier(mod.sourceTag))
+                    continue;
+
                 mod.Tick(turn);
                 modifiers[i] = mod;
                 if (mod.IsExpired())
@@ -209,12 +227,20 @@ using UnityEngine;
 
             modifiers.RemoveAll(m => m.IsExpired());
 
-            // 仅在该来源标签不再有活跃修改器时广播移除（buff 特效据此销毁）。
             foreach (var tag in expiredTags)
             {
                 if (!HasModifierWithTag(tag))
                     OnModifierRemoved?.Invoke(tag);
             }
+        }
+
+        /// <summary>
+        /// sourceTag 以 Buff. 开头的属性修改器；祈福护佑下不 Tick 其回合。
+        /// </summary>
+        public static bool IsBuffPrefixedModifier(GameplayTag sourceTag)
+        {
+            string name = sourceTag.TagName;
+            return !string.IsNullOrEmpty(name) && name.StartsWith("Buff.");
         }
 
         private AbilitySystemComponent cachedAsc;
@@ -227,12 +253,15 @@ using UnityEngine;
         // ---------- 伤害/治疗快捷方法 ----------测试用
         public void TakeDamage(float damage, GameplayTag damageType, AbilitySystemComponent instigator = null)
         {
+            var targetAsc = cachedAsc ?? GetComponent<AbilitySystemComponent>();
+
+            if (instigator != null && targetAsc != null)
+                damage = BattleBarrierManager.Instance.MitigateDamage(instigator, targetAsc, damage);
+
             float finalDamage = Mathf.Max(1, damage - Defense);
             float healthBefore = CurrentHealth;
             CurrentHealth -= finalDamage;
             Debug.Log($"[AttributeSet] 受到 {finalDamage} 点 {damageType} 伤害，剩余血量: {CurrentHealth}");
-
-            var targetAsc = cachedAsc ?? GetComponent<AbilitySystemComponent>();
 
             if (instigator != null)
             {

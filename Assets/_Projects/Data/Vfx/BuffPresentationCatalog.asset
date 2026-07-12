@@ -1,0 +1,91 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8f9a0b1c2d3547698e7f605b4c3d2e1, type: 3}
+  m_Name: BuffPresentationCatalog
+  m_EditorClassIdentifier: 
+  entries:
+  - category:
+      tagName: Buff.AttackUp
+    vfx:
+      prefab: {fileID: 1707000239251520, guid: 7ca99580e6cb71e49a3da241e1ce24a1, type: 3}
+      timing: 0
+      anchor:
+        type: 5
+        attachPointId: Stomach
+        localOffset: {x: 0, y: -1.1, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 0
+  - category:
+      tagName: Buff.DefenseUp
+    vfx:
+      prefab: {fileID: 1146985597798048, guid: 31ccb42e93d278e4fa39ae0773fae1b5, type: 3}
+      timing: 0
+      anchor:
+        type: 5
+        attachPointId: Stomach
+        localOffset: {x: 0, y: -1.1, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 0
+  - category:
+      tagName: Buff.AgilityUp
+    vfx:
+      prefab: {fileID: 948173124597725933, guid: 34b67c9097fda7840a1a2cf55fc0c6b1,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 5
+        attachPointId: Stomach
+        localOffset: {x: 0, y: -1.1, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 0
+  - category:
+      tagName: Buff.BlessingWard
+    vfx:
+      prefab: {fileID: 2747815885108190112, guid: f4dc34a7cbfebaa40aa8f8c004333ef1,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 5
+        attachPointId: Stomach
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 0
+  - category:
+      tagName: State.Channeling
+    vfx:
+      prefab: {fileID: 2747815885108190112, guid: f4dc34a7cbfebaa40aa8f8c004333ef1,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 5
+        attachPointId: Stomach
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 0
+  - category:
+      tagName: Zone.Barrier
+    vfx:
+      prefab: {fileID: 509412756994637923, guid: 066dcfb5d7fe41ae8aa24a2310f1929d,
+        type: 3}
+      timing: 1
+      anchor:
+        type: 4
+        attachPointId: 
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 0
+      rotationMode: 0
+      autoDestroySeconds: 0

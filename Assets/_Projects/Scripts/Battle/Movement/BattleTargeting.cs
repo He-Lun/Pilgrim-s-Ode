@@ -36,6 +36,108 @@ public static class BattleTargeting
         return asc != null && asc.Attributes != null && !asc.Attributes.IsDead();
     }
 
+    /// <summary>圆心半径内过滤存活角色（可按阵营筛选）。</summary>
+    public static List<AbilitySystemComponent> FilterActorsInRadius(
+        AbilitySystemComponent caster,
+        Vector3 center,
+        float radiusMeters,
+        AreaAffiliationFilter affiliation)
+    {
+        var result = new List<AbilitySystemComponent>();
+        if (caster == null || radiusMeters <= 0f) return result;
+
+        foreach (var asc in FindAbilitySystemsInRadius(center, radiusMeters))
+        {
+            if (asc == null || !IsAlive(asc)) continue;
+            if (!MatchesAffiliation(caster, asc, affiliation)) continue;
+            if (!result.Contains(asc))
+                result.Add(asc);
+        }
+
+        return result;
+    }
+
+    /// <summary>DirectedRect 内过滤存活角色（可按阵营筛选）。</summary>
+    public static List<AbilitySystemComponent> FilterActorsInDirectedRect(
+        AbilitySystemComponent caster,
+        Vector3 origin,
+        Vector3 aimDirection,
+        float lengthMeters,
+        float widthMeters,
+        AreaAffiliationFilter affiliation)
+    {
+        var result = new List<AbilitySystemComponent>();
+        if (caster == null || lengthMeters <= 0f || widthMeters <= 0f)
+            return result;
+
+        var rect = DirectedRectUtility.Build(origin, aimDirection, lengthMeters, widthMeters);
+        float searchRadius = Mathf.Sqrt(lengthMeters * lengthMeters + (widthMeters * 0.5f) * (widthMeters * 0.5f));
+
+        foreach (var asc in FindAbilitySystemsInRadius(origin, searchRadius))
+        {
+            if (asc == null || !IsAlive(asc)) continue;
+            if (!MatchesAffiliation(caster, asc, affiliation)) continue;
+            if (!DirectedRectUtility.ContainsPoint(rect, asc.transform.position)) continue;
+            if (!result.Contains(asc))
+                result.Add(asc);
+        }
+
+        return result;
+    }
+
+    private static bool MatchesAffiliation(
+        AbilitySystemComponent caster,
+        AbilitySystemComponent candidate,
+        AreaAffiliationFilter affiliation)
+    {
+        switch (affiliation)
+        {
+            case AreaAffiliationFilter.AlliesOnly:
+                return candidate.TeamId == caster.TeamId;
+            case AreaAffiliationFilter.EnemiesOnly:
+                return caster.IsEnemy(candidate);
+            default:
+                return true;
+        }
+    }
+
+    /// <summary>同阵营存活角色（含施法者）。</summary>
+    public static List<AbilitySystemComponent> FilterAllies(
+        AbilitySystemComponent caster,
+        bool includeCaster = true)
+    {
+        var result = new List<AbilitySystemComponent>();
+        if (caster == null) return result;
+
+        foreach (var asc in FindAllBattleActors())
+        {
+            if (asc == null) continue;
+            if (!includeCaster && asc == caster) continue;
+            if (asc.TeamId != caster.TeamId) continue;
+            if (!result.Contains(asc))
+                result.Add(asc);
+        }
+
+        return result;
+    }
+
+    /// <summary>敌对阵营存活角色。</summary>
+    public static List<AbilitySystemComponent> FilterEnemies(AbilitySystemComponent caster)
+    {
+        var result = new List<AbilitySystemComponent>();
+        if (caster == null) return result;
+
+        foreach (var asc in FindAllBattleActors())
+        {
+            if (asc == null || asc == caster) continue;
+            if (!caster.IsEnemy(asc)) continue;
+            if (!result.Contains(asc))
+                result.Add(asc);
+        }
+
+        return result;
+    }
+
     /// <summary>圆心半径内过滤存活敌人（不含施法者）。</summary>
     public static List<AbilitySystemComponent> FilterEnemiesInRadius(
         AbilitySystemComponent caster,
