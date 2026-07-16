@@ -59,7 +59,10 @@ public class MoveState : ICharacterState
         stepProgress += dt / stepDuration;
         if (stepProgress >= 1f)
         {
+            Vector3 prev = ctx.transform.position;
             ctx.transform.position = stepTarget;
+            if (TryZoneInterrupt(ctx, prev, stepTarget))
+                return;
 
             stepIndex++;
             if (stepIndex >= path.Count)
@@ -72,7 +75,12 @@ public class MoveState : ICharacterState
             return;
         }
 
-        ctx.transform.position = Vector3.Lerp(stepStart, stepTarget, stepProgress);
+        Vector3 from = ctx.transform.position;
+        Vector3 to = Vector3.Lerp(stepStart, stepTarget, stepProgress);
+        ctx.transform.position = to;
+        if (TryZoneInterrupt(ctx, from, to))
+            return;
+
         ctx.Facing?.FaceMoveDirection(stepTarget - stepStart);
         ctx.AnimatorDriver?.SetSpeed(Mathf.Lerp(0.5f, 1f, stepProgress));
     }
@@ -130,7 +138,12 @@ public class MoveState : ICharacterState
         segmentProgress += dt / segmentDuration;
         float t = Mathf.Clamp01(segmentProgress);
 
-        ctx.transform.position = Vector3.Lerp(segmentStart, segmentEnd, t);
+        Vector3 from = ctx.transform.position;
+        Vector3 to = Vector3.Lerp(segmentStart, segmentEnd, t);
+        ctx.transform.position = to;
+        if (TryZoneInterrupt(ctx, from, to))
+            return;
+
         ctx.Facing?.FaceMoveDirection(segmentEnd - segmentStart);
         ctx.AnimatorDriver?.SetSpeed(Mathf.Lerp(0.5f, 1f, t));
 
@@ -150,6 +163,20 @@ public class MoveState : ICharacterState
         segmentProgress = 0f;
         segmentDuration = SegmentDuration(ctx, segmentStart, segmentEnd);
         ctx.Facing?.FaceMoveDirection(segmentEnd - segmentStart);
+    }
+
+    /// <summary>穿入激光等领域时立刻受伤并进受击，停止跑步。</summary>
+    private static bool TryZoneInterrupt(CharacterMotor ctx, Vector3 from, Vector3 to)
+    {
+        if (ctx?.Asc == null)
+            return false;
+
+        if (!BattleZoneManager.Instance.TryProcessMovementSegment(ctx.Asc, from, to))
+            return false;
+
+        // DamageTaken → BeginHitPresentation 会打断 Move；此处再确认
+        return ctx.StateMachine == null
+               || ctx.StateMachine.CurrentType != CharacterStateType.Move;
     }
 
     private static float SegmentDuration(CharacterMotor ctx, Vector3 from, Vector3 to)

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 /// <summary>
@@ -48,37 +49,34 @@ public class CharacterAnimatorDriver : MonoBehaviour
     public void TriggerHit()
     {
         if (animator == null) return;
-        if (HasParameter(HitHash))
-            animator.SetTrigger(HitHash);
+        TrySetTrigger(HitHash);
     }
 
     /// <summary>动画事件 OnHitComplete 时触发，驱动 Hit→Idle 过渡。</summary>
     public void EndHitPresentation()
     {
         if (animator == null) return;
-        if (HasParameter(HitRecoverHash))
-            animator.SetTrigger(HitRecoverHash);
+        TrySetTrigger(HitRecoverHash);
     }
 
     public void TriggerDeath()
     {
         if (animator == null) return;
-        if (HasParameter(DeathHash))
-            animator.SetTrigger(DeathHash);
+        TrySetTrigger(DeathHash);
     }
 
     public void PlaySkill(AbilityPresentationEntry presentation)
     {
         if (animator == null || presentation == null || !presentation.IsConfigured) return;
 
-        if (!string.IsNullOrEmpty(presentation.animTrigger))
+        // animTrigger == SkillIndex 表示走整型 skillAnimIndex，不是 Trigger。
+        if (!string.IsNullOrEmpty(presentation.animTrigger)
+            && !string.Equals(presentation.animTrigger, CharacterAnimationParameters.SkillIndex, StringComparison.Ordinal))
         {
-            int triggerHash = Animator.StringToHash(presentation.animTrigger);
-            if (HasParameter(triggerHash))
-                animator.SetTrigger(triggerHash);
+            TrySetTrigger(Animator.StringToHash(presentation.animTrigger));
         }
 
-        if (HasParameter(SkillIndexHash))
+        if (HasIntegerParameter(SkillIndexHash))
         {
             // 先归零再设置，避免同值重复写入时 Any State 不触发。
             animator.SetInteger(SkillIndexHash, 0);
@@ -95,19 +93,41 @@ public class CharacterAnimatorDriver : MonoBehaviour
     public void StopSkill()
     {
         if (animator == null) return;
-        if (HasParameter(SkillIndexHash))
+        if (HasIntegerParameter(SkillIndexHash))
             animator.SetInteger(SkillIndexHash, 0);
+    }
+
+    private bool TrySetTrigger(int hash)
+    {
+        if (animator == null || !TryGetParameter(hash, out var param)) return false;
+        if (param.type != AnimatorControllerParameterType.Trigger) return false;
+
+        animator.SetTrigger(hash);
+        return true;
+    }
+
+    private bool HasIntegerParameter(int hash)
+    {
+        return TryGetParameter(hash, out var param)
+               && param.type == AnimatorControllerParameterType.Int;
     }
 
     private bool HasParameter(int hash)
     {
+        return TryGetParameter(hash, out _);
+    }
+
+    private bool TryGetParameter(int hash, out AnimatorControllerParameter param)
+    {
+        param = default;
         if (animator == null || animator.runtimeAnimatorController == null)
             return false;
 
-        foreach (var param in animator.parameters)
+        foreach (var p in animator.parameters)
         {
-            if (param.nameHash == hash)
-                return true;
+            if (p.nameHash != hash) continue;
+            param = p;
+            return true;
         }
 
         return false;

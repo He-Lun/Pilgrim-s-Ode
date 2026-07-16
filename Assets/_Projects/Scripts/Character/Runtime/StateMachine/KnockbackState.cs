@@ -24,7 +24,9 @@ public class KnockbackState : ICharacterState
         maxDistance = Mathf.Max(0f, payload.knockbackDistance);
         duration = Mathf.Max(0.08f, payload.knockbackDuration);
 
-        Vector3 flatDir = ctx.transform.position - fromCenter;
+        Vector3 flatDir = payload.hasKnockbackDirection && payload.knockbackDirection.sqrMagnitude > 0.0001f
+            ? payload.knockbackDirection
+            : ctx.transform.position - fromCenter;
         flatDir.y = 0f;
         if (flatDir.sqrMagnitude < 0.0001f)
             flatDir = ctx.transform.forward;

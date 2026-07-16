@@ -21,6 +21,7 @@ MonoBehaviour:
   areaRadius: 11
   areaRadiusMeters: 11.5
   areaWidthMeters: 1.5
+  sectorHalfAngleDegrees: 45
   requiredTags:
   - tagName: Job.Paladin
   blockTags: []
@@ -38,20 +39,50 @@ MonoBehaviour:
     - rid: 3699151960701927432
       type: {class: DamageEffect, ns: , asm: Assembly-CSharp}
       data:
-        description: "\u9020\u6210100%\u653B\u51FB\u529B\u7269\u7406\u4F24\u5BB3"
+        description: "\u9020\u6210180%\u653B\u51FB\u529B\u7269\u7406\u4F24\u5BB3"
         phase: 1
         targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
         chance: 1
-        scaler: 1
+        requiredCasterTags: []
+        blockCasterTags: []
+        targetVfx:
+          prefab: {fileID: 1164356520849368, guid: 39bd00d8a6dd56e408a16fab37374aac,
+            type: 3}
+          timing: 1
+          anchor:
+            type: 5
+            attachPointId: Stomach
+            localOffset: {x: 0, y: 0, z: 0}
+          attachMode: 1
+          rotationMode: 0
+          autoDestroySeconds: 0
+        scaler: 1.8
         damageType:
           tagName: DamageType.Physical
     - rid: 3699152073665019906
       type: {class: DamageEffect, ns: , asm: Assembly-CSharp}
       data:
-        description: "\u9020\u6210400%\u653B\u51FB\u529B\u5723\u5149\u5C5E\u6027\u4F24\u5BB3"
+        description: "\u9020\u6210550%\u653B\u51FB\u529B\u5723\u5149\u5C5E\u6027\u4F24\u5BB3"
         phase: 1
         targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
         chance: 1
-        scaler: 4
+        requiredCasterTags: []
+        blockCasterTags: []
+        targetVfx:
+          prefab: {fileID: 1164356520849368, guid: 39bd00d8a6dd56e408a16fab37374aac,
+            type: 3}
+          timing: 1
+          anchor:
+            type: 5
+            attachPointId: Stomach
+            localOffset: {x: 0, y: 0, z: 0}
+          attachMode: 1
+          rotationMode: 0
+          autoDestroySeconds: 0
+        scaler: 5.5
         damageType:
           tagName: DamageType.Divine

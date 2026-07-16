@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 
 /// <summary>
-/// 伤害效果
+/// 伤害效果。命中特效配基类 targetVfx（范围技勿依赖 defaultVfx 的 Target 锚点）。
 /// </summary>
 [System.Serializable]
 public class DamageEffect : AbilityEffect

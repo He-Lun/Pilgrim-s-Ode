@@ -15,12 +15,13 @@ MonoBehaviour:
   abilityName: "\u5723\u5149\u88C1\u51B3"
   description: "\u53EC\u5524\u53E4\u795E\u6295\u4E0B\u7684\u5251\u67C4\uFF0C\u5BF9\u5706\u5F62\u533A\u57DF\u5185\u7684\u654C\u4EBA\u9020\u6210\u4E2D\u7B49\u795E\u5723\u4F24\u5BB3"
   icon: {fileID: 0}
-  actionPointCost: 4
+  actionPointCost: 2
   isInstant: 1
   targetScope: 5
   areaRadius: 7
   areaRadiusMeters: 5.36
   areaWidthMeters: 2
+  sectorHalfAngleDegrees: 45
   requiredTags:
   - tagName: Job.Paladin
   blockTags: []
@@ -40,7 +41,22 @@ MonoBehaviour:
         description: "\u9020\u6210350%\u795E\u5723\u5C5E\u6027\u4F24\u5BB3"
         phase: 1
         targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
         chance: 1
+        requiredCasterTags: []
+        blockCasterTags: []
+        targetVfx:
+          prefab: {fileID: 3894621978031112059, guid: 594dbf2e6d47af1448c23c5bc4b3df45,
+            type: 3}
+          timing: 1
+          anchor:
+            type: 5
+            attachPointId: Stomach
+            localOffset: {x: 0, y: 0, z: 0}
+          attachMode: 1
+          rotationMode: 0
+          autoDestroySeconds: 0
         scaler: 3.5
         damageType:
           tagName: DamageType.Divine

@@ -46,24 +46,27 @@ public class ProjectileAbilityEffect : AbilityEffect
         GameplayAbility sourceAbility,
         AbilityActivationContext context)
     {
-        if (!RollChance()) return;
-        if (caster == null || projectilePrefab == null) return;
-
-        // 发射点解析（复用角色的 VFX 挂点系统）
-        Vector3 muzzlePos;
-        Quaternion muzzleRot;
-        var player = caster.GetComponent<AbilityVfxPlayer>();
-        if (player != null)
+        if (!ShouldExecute(caster) || projectilePrefab == null)
         {
-            player.TryGetAnchorWorld(muzzleAnchor, context, out muzzlePos, out muzzleRot);
+            if (projectilePrefab == null)
+                Debug.LogWarning("[ProjectileAbilityEffect] 未配置 projectilePrefab，无法发射。");
+            return;
         }
-        else
+
+        // 发射点：挂点失败时回退到施法者胸口，避免落在世界原点看不见
+        Vector3 muzzlePos = caster.transform.position + Vector3.up * 1.2f;
+        Quaternion muzzleRot = caster.transform.rotation;
+        var player = caster.GetComponent<AbilityVfxPlayer>();
+        if (player != null
+            && player.TryGetAnchorWorld(muzzleAnchor, context, out Vector3 anchorPos, out Quaternion anchorRot))
         {
-            muzzlePos = caster.transform.position + Vector3.up;
-            muzzleRot = caster.transform.rotation;
+            muzzlePos = anchorPos;
+            muzzleRot = anchorRot;
         }
 
         var go = Object.Instantiate(projectilePrefab, muzzlePos, muzzleRot);
+        StripThirdPartyProjectileDrivers(go);
+
         var projectile = go.GetComponent<AbilityProjectile>();
         if (projectile == null)
             projectile = go.AddComponent<AbilityProjectile>();
@@ -90,8 +93,12 @@ public class ProjectileAbilityEffect : AbilityEffect
         }
         else if (homing != null)
         {
-            direction = homing.transform.position - muzzlePos;
+            direction = homing.transform.position + Vector3.up - muzzlePos;
         }
+
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.0001f)
+            direction = caster.transform.forward;
 
         float range = maxRangeMeters > 0f
             ? maxRangeMeters
@@ -115,6 +122,23 @@ public class ProjectileAbilityEffect : AbilityEffect
             impactVfx = impactVfx,
             impactVfxAutoDestroy = impactVfxAutoDestroy
         });
+
+        // 发射瞬间对锁定目标播（命中结算特效请配 onImpactEffects 上的 targetVfx）
+        if (homing != null)
+            PlayTargetVfx(caster, homing);
+    }
+
+    /// <summary>
+    /// Hovl 等资源自带的 TargetProjectile 在未 SetTarget 时会立刻 Destroy，
+    /// 与 AbilityProjectile 冲突，发射前剥离。
+    /// </summary>
+    private static void StripThirdPartyProjectileDrivers(GameObject go)
+    {
+        if (go == null) return;
+
+        var legacy = go.GetComponent("TargetProjectile") as MonoBehaviour;
+        if (legacy != null)
+            Object.Destroy(legacy);
     }
 
     public override void Execute(AbilitySystemComponent caster, List<AbilitySystemComponent> targets)

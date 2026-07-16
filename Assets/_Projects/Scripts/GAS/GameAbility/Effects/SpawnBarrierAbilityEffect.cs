@@ -30,7 +30,7 @@ public class SpawnBarrierAbilityEffect : AbilityEffect
         GameplayAbility sourceAbility,
         AbilityActivationContext context)
     {
-        if (caster == null || sourceAbility == null)
+        if (!ShouldExecute(caster) || sourceAbility == null)
             return;
 
         if (!TryResolvePlacement(caster, context, out Vector3 center, out Vector3 forward))
@@ -50,6 +50,8 @@ public class SpawnBarrierAbilityEffect : AbilityEffect
             protectAlliesOnly,
             durationTurns,
             barrierTag);
+
+        PlayTargetVfx(caster, ResolveTargets(caster, sourceAbility, context));
     }
 
     public override void Execute(AbilitySystemComponent caster, List<AbilitySystemComponent> targets) { }

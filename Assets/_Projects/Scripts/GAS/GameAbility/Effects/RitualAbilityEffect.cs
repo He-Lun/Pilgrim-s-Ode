@@ -18,9 +18,9 @@ public class RitualAbilityEffect : AbilityEffect
         GameplayAbility sourceAbility,
         AbilityActivationContext context)
     {
-        if (!RollChance() || caster == null) return;
+        if (!ShouldExecute(caster)) return;
 
-        var targets = BattleTargeting.ResolveEffectTargets(caster, sourceAbility, context, targetSelection);
+        var targets = ResolveTargets(caster, sourceAbility, context);
         if (targets == null) return;
 
         foreach (var t in targets)
@@ -28,6 +28,7 @@ public class RitualAbilityEffect : AbilityEffect
             if (t == null || t == caster) continue;
 
             caster.RitualTracker.Begin(caster, t, channelTag, wardTag, durationTurns);
+            PlayTargetVfx(caster, t);
             return;
         }
     }

@@ -29,6 +29,9 @@ public class HealAbilityEffect : AbilityEffect
     [Tooltip("ScaledByCasterAttack 模式：治疗量 = scaler × 施法者 Attack")]
     public float scaler = 1f;
 
+    [Tooltip("勾选则无视 Debuff.HealBlock（如狂暴下的吸血/自疗）")]
+    public bool bypassHealBlock = false;
+
     public override void Execute(AbilitySystemComponent caster, List<AbilitySystemComponent> targets)
     {
         if (targets == null) return;
@@ -40,7 +43,7 @@ public class HealAbilityEffect : AbilityEffect
             float amount = ResolveHealAmount(caster, target);
             if (amount <= 0f) continue;
 
-            target.Attributes.Heal(amount, caster, target);
+            target.Attributes.Heal(amount, caster, target, bypassHealBlock);
         }
     }
 

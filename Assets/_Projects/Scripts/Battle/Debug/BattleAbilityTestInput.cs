@@ -68,7 +68,9 @@ public class BattleAbilityTestInput : MonoBehaviour
         if (Input.GetMouseButtonDown(0) && actor.IsChanneling)
             actor.InterruptRitualIfAny();
 
-        if (armedAbility.targetScope == TargetScope.DirectedRect)
+        var scope = armedAbility.GetEffectiveTargetScope(actor);
+
+        if (scope == TargetScope.DirectedRect || scope == TargetScope.DirectedSector)
         {
             UpdateDirectedRectAim(actor);
             if (Input.GetMouseButtonDown(0))
@@ -78,11 +80,21 @@ public class BattleAbilityTestInput : MonoBehaviour
             return;
         }
 
-        if (armedAbility.targetScope == TargetScope.Area)
+        if (scope == TargetScope.Area)
         {
             UpdateAreaAim(actor);
             if (Input.GetMouseButtonDown(0))
                 TryCastArea(actor);
+            if (Input.GetKeyDown(cancelKey))
+                CancelTargeting();
+            return;
+        }
+
+        if (scope == TargetScope.AreaAroundSelf)
+        {
+            RefreshAreaAroundSelfPreview(actor);
+            if (Input.GetMouseButtonDown(0))
+                TryCastAreaAroundSelf(actor, armedAbility);
             if (Input.GetKeyDown(cancelKey))
                 CancelTargeting();
             return;
@@ -117,21 +129,27 @@ public class BattleAbilityTestInput : MonoBehaviour
                 return;
             }
 
-            if (ability.targetScope == TargetScope.AreaAroundSelf
-                || ability.targetScope == TargetScope.AllAllies
-                || ability.targetScope == TargetScope.AllEnemies)
+            var scope = ability.GetEffectiveTargetScope(actor);
+
+            if (scope == TargetScope.AllAllies || scope == TargetScope.AllEnemies)
             {
                 TryCastGlobalScope(actor, ability);
                 return;
             }
 
-            if (ability.targetScope == TargetScope.DirectedRect)
+            if (scope == TargetScope.AreaAroundSelf)
+            {
+                BeginAreaAroundSelfTargeting(actor, ability);
+                return;
+            }
+
+            if (scope == TargetScope.DirectedRect || scope == TargetScope.DirectedSector)
             {
                 BeginDirectedRectTargeting(actor, ability);
                 return;
             }
 
-            if (ability.targetScope == TargetScope.Area)
+            if (scope == TargetScope.Area)
             {
                 BeginAreaTargeting(actor, ability);
                 return;
@@ -158,12 +176,14 @@ public class BattleAbilityTestInput : MonoBehaviour
                 ability,
                 BattleTargeting.FindAllBattleActors()));
 
-        if (ability.targetScope != TargetScope.Self
-            && ability.targetScope != TargetScope.AreaAroundSelf
-            && ability.targetScope != TargetScope.AllAllies
-            && ability.targetScope != TargetScope.AllEnemies
-            && ability.targetScope != TargetScope.DirectedRect
-            && ability.targetScope != TargetScope.Area
+        var scope = ability.GetEffectiveTargetScope(caster);
+        if (scope != TargetScope.Self
+            && scope != TargetScope.AreaAroundSelf
+            && scope != TargetScope.AllAllies
+            && scope != TargetScope.AllEnemies
+            && scope != TargetScope.DirectedRect
+            && scope != TargetScope.DirectedSector
+            && scope != TargetScope.Area
             && validTargets.Count == 0)
         {
             lastResultMessage = $"「{ability.abilityName}」射程内没有合法目标（射程 {BattleTargeting.GetCastRangeMeters(ability):F1}m）。";
@@ -174,6 +194,31 @@ public class BattleAbilityTestInput : MonoBehaviour
 
         SetMoveInputBlocked(true);
         lastResultMessage = $"已选择「{ability.abilityName}」，点击高亮敌人释放（{validTargets.Count} 个可选），{cancelKey} 取消。";
+    }
+
+    private void BeginAreaAroundSelfTargeting(AbilitySystemComponent caster, GameplayAbility ability)
+    {
+        if (!CanCasterUseAbility(caster, ability, out string reason))
+        {
+            lastResultMessage = reason;
+            return;
+        }
+
+        armedAbility = ability;
+        RefreshAreaAroundSelfPreview(caster);
+        SetMoveInputBlocked(true);
+        float r = ability.GetEffectiveAreaRadiusMeters(caster);
+        lastResultMessage = $"「{ability.abilityName}」自身范围 {r:F1}m：左键确认释放，{cancelKey} 取消。";
+    }
+
+    private void RefreshAreaAroundSelfPreview(AbilitySystemComponent caster)
+    {
+        if (caster == null || armedAbility == null) return;
+
+        float radius = armedAbility.GetEffectiveAreaRadiusMeters(caster);
+        validTargets.Clear();
+        validTargets.AddRange(
+            BattleTargeting.FilterEnemiesInRadius(caster, caster.transform.position, radius));
     }
 
     private void TryCastGlobalScope(AbilitySystemComponent caster, GameplayAbility ability)
@@ -198,7 +243,26 @@ public class BattleAbilityTestInput : MonoBehaviour
     }
 
     private void TryCastAreaAroundSelf(AbilitySystemComponent caster, GameplayAbility ability)
-        => TryCastGlobalScope(caster, ability);
+    {
+        if (ability == null) return;
+
+        if (!CanCasterUseAbility(caster, ability, out string reason))
+        {
+            lastResultMessage = reason;
+            return;
+        }
+
+        var result = caster.ActivateAbility(ability, AbilityActivationContext.Self());
+        if (result != AbilityActivationResult.Success)
+        {
+            lastResultMessage = $"释放失败: {result}";
+            return;
+        }
+
+        lastResultMessage = $"释放「{ability.abilityName}」";
+        TurnManager.Instance?.NotifyActionResolved();
+        CancelTargeting();
+    }
 
     private void BeginDirectedRectTargeting(AbilitySystemComponent caster, GameplayAbility ability)
     {
@@ -232,6 +296,15 @@ public class BattleAbilityTestInput : MonoBehaviour
     private void RefreshDirectedRectPreview(AbilitySystemComponent caster)
     {
         validTargets.Clear();
+        if (armedAbility == null) return;
+
+        if (armedAbility.GetEffectiveTargetScope(caster) == TargetScope.DirectedSector)
+        {
+            validTargets.AddRange(
+                BattleTargeting.PreviewDirectedSectorTargets(caster, armedAbility, aimDirection));
+            return;
+        }
+
         validTargets.AddRange(
             BattleTargeting.PreviewDirectedRectTargets(caster, armedAbility, aimDirection));
     }
@@ -382,15 +455,23 @@ public class BattleAbilityTestInput : MonoBehaviour
             return;
         }
 
-        if (armedAbility.targetScope == TargetScope.DirectedRect)
+        var scope = armedAbility.GetEffectiveTargetScope(caster);
+
+        if (scope == TargetScope.DirectedRect || scope == TargetScope.DirectedSector)
         {
             RefreshDirectedRectPreview(caster);
             return;
         }
 
-        if (armedAbility.targetScope == TargetScope.Area)
+        if (scope == TargetScope.Area)
         {
             UpdateAreaAim(caster);
+            return;
+        }
+
+        if (scope == TargetScope.AreaAroundSelf)
+        {
+            RefreshAreaAroundSelfPreview(caster);
             return;
         }
 
@@ -494,10 +575,17 @@ public class BattleAbilityTestInput : MonoBehaviour
             return;
         }
 
-        if (armedAbility.targetScope == TargetScope.DirectedRect)
+        var scope = armedAbility.GetEffectiveTargetScope(caster);
+
+        if (scope == TargetScope.DirectedRect || scope == TargetScope.DirectedSector)
         {
             if (showCastRange)
-                DrawDirectedRectVisual(caster);
+            {
+                if (scope == TargetScope.DirectedSector)
+                    DrawDirectedSectorVisual(caster);
+                else
+                    DrawDirectedRectVisual(caster);
+            }
             else
                 SetDirectedVisualVisible(false);
 
@@ -508,7 +596,7 @@ public class BattleAbilityTestInput : MonoBehaviour
             return;
         }
 
-        if (armedAbility.targetScope == TargetScope.Area)
+        if (scope == TargetScope.Area)
         {
             SetDirectedVisualVisible(false);
             if (showCastRange && hasAreaPreview)
@@ -526,7 +614,12 @@ public class BattleAbilityTestInput : MonoBehaviour
         SetDirectedVisualVisible(false);
 
         if (showCastRange)
-            DrawCastRangeRing(caster.transform.position, BattleTargeting.GetCastRangeMeters(armedAbility));
+        {
+            float radius = scope == TargetScope.AreaAroundSelf
+                ? armedAbility.GetEffectiveAreaRadiusMeters(caster)
+                : BattleTargeting.GetCastRangeMeters(armedAbility);
+            DrawCastRangeRing(caster.transform.position, radius);
+        }
         else
             SetRangeVisible(false);
 
@@ -534,6 +627,37 @@ public class BattleAbilityTestInput : MonoBehaviour
             DrawTargetMarkers();
         else
             ClearTargetMarkers();
+    }
+
+    private void DrawDirectedSectorVisual(AbilitySystemComponent caster)
+    {
+        if (rangeMeshFilter == null || armedAbility == null) return;
+
+        var sector = DirectedSectorUtility.Build(
+            caster.transform.position,
+            aimDirection,
+            armedAbility.GetAreaRadiusMeters(),
+            armedAbility.GetSectorHalfAngleDegrees());
+
+        rangeMeshFilter.mesh = DirectedSectorUtility.BuildFillMesh(sector);
+        if (rangeMeshRenderer != null)
+            rangeMeshRenderer.material.color = directedRectColor;
+
+        EnsureDirectedLines();
+        SetRangeVisible(true);
+        SetDirectedVisualVisible(true);
+
+        var outline = DirectedSectorUtility.GetOutlinePoints(sector);
+        directedOutlineLine.positionCount = outline.Length;
+        directedOutlineLine.SetPositions(outline);
+
+        Vector3 origin = caster.transform.position + Vector3.up * 0.1f;
+        Vector3 tip = origin + aimDirection * (armedAbility.GetAreaRadiusMeters() + 0.35f);
+        directedArrowLine.positionCount = 2;
+        directedArrowLine.SetPosition(0, origin);
+        directedArrowLine.SetPosition(1, tip);
+        directedOutlineLine.enabled = true;
+        directedArrowLine.enabled = true;
     }
 
     private void DrawDirectedRectVisual(AbilitySystemComponent caster)
@@ -592,7 +716,7 @@ public class BattleAbilityTestInput : MonoBehaviour
         if (!Physics.Raycast(ray, out RaycastHit hit, 500f, groundLayer, QueryTriggerInteraction.Ignore))
             return false;
 
-        hitPoint = hit.point;
+        hitPoint = BattleTargeting.ProjectToGround(hit.point);
         return true;
     }
 
@@ -759,13 +883,20 @@ public class BattleAbilityTestInput : MonoBehaviour
         }
 
         GUILayout.Space(4f);
-        GUILayout.Label(IsTargeting
-            ? armedAbility?.targetScope == TargetScope.DirectedRect
-                ? $"选向中: {armedAbility?.abilityName} | 左键释放 | {cancelKey} 取消"
-                : armedAbility?.targetScope == TargetScope.Area
-                    ? $"点地放置: {armedAbility?.abilityName} | 左键确认 | {cancelKey} 取消"
-                    : $"选目标中: {armedAbility?.abilityName} | 左键释放 | {cancelKey} 取消"
-            : "按数字键选择技能，再点敌人、选向或点地。");
+        string targetingHint = "按数字键选择技能，再点敌人、选向或点地。";
+        if (IsTargeting && CanUseBattleInput(out var hudCaster) && armedAbility != null)
+        {
+            var hudScope = armedAbility.GetEffectiveTargetScope(hudCaster);
+            targetingHint = hudScope == TargetScope.DirectedRect || hudScope == TargetScope.DirectedSector
+                ? $"选向中: {armedAbility.abilityName} | 左键释放 | {cancelKey} 取消"
+                : hudScope == TargetScope.Area
+                    ? $"点地放置: {armedAbility.abilityName} | 左键确认 | {cancelKey} 取消"
+                    : hudScope == TargetScope.AreaAroundSelf
+                        ? $"自身范围: {armedAbility.abilityName} | 左键确认 | {cancelKey} 取消"
+                        : $"选目标中: {armedAbility.abilityName} | 左键释放 | {cancelKey} 取消";
+        }
+
+        GUILayout.Label(targetingHint);
 
         if (!string.IsNullOrEmpty(lastResultMessage))
             GUILayout.Label(lastResultMessage);

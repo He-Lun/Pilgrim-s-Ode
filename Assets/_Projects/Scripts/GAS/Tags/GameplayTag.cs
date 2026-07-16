@@ -113,6 +113,8 @@ using System.Runtime.CompilerServices;
             public static readonly GameplayTag Roland = new GameplayTag("Character.Roland");
             [Header("椿")]
             public static readonly GameplayTag Haru = new GameplayTag("Character.Haru");
+            [Header("露娜")]
+            public static readonly GameplayTag Luna = new GameplayTag("Character.Luna");
         }
 
         //伤害特性
@@ -122,6 +124,8 @@ using System.Runtime.CompilerServices;
             public static readonly GameplayTag Divine = new GameplayTag("DamageType.Divine");
             [Header("物理")]
             public static readonly GameplayTag Physical = new GameplayTag("DamageType.Physical");
+            [Header("法术")]
+            public static readonly GameplayTag Fire = new GameplayTag("DamageType.AP");
         }
 
         //Buff — 类别 tag（Buff.AttackUp 等）仅作默认/查询；技能实例用 Buff.<类别>.<技能名> 以支持多来源叠加。
@@ -135,12 +139,18 @@ using System.Runtime.CompilerServices;
             public static readonly GameplayTag AgilityUp = new GameplayTag("Buff.AgilityUp");
             [Header("速度提高（类别）")]
             public static readonly GameplayTag SpeedUp = new GameplayTag("Buff.SpeedUp");
+            [Header("狂怒状态")]
+            public static readonly GameplayTag Anger = new GameplayTag("Buff.Anger");
+            [Header("永世怒火晶石 — 与晶石生命周期绑定")]
+            public static readonly GameplayTag Anger_EternalFlame = new GameplayTag("Buff.Anger.EternalFlame");
             [Header("祈福护佑（增益回合冻结）")]
             public static readonly GameplayTag BlessingWard = new GameplayTag("Buff.BlessingWard");
             [Header("霸体（免疫受击/眩晕表现）")]
             public static readonly GameplayTag HyperArmor = new GameplayTag("Buff.HyperArmor");
 
             public static readonly GameplayTag HyperArmor_RingWave = new GameplayTag("Buff.HyperArmor.RingWave");
+            [Header("突进霸体 — 与 DashCharge 生命周期绑定")]
+            public static readonly GameplayTag HyperArmor_DashCharge = new GameplayTag("Buff.HyperArmor.DashCharge");
 
             [Header("攻升 — 技能实例")]
             public static readonly GameplayTag AttackUp_DogBlessing = new GameplayTag("Buff.AttackUp.DogBlessing");
@@ -154,6 +164,11 @@ using System.Runtime.CompilerServices;
 
             [Header("敏捷 — 技能实例")]
             public static readonly GameplayTag AgilityUp_SurfaciaBlessing = new GameplayTag("Buff.AgilityUp.SurfaciaBlessing");
+
+            [Header("月相（露娜，由月魂层数同步，互斥）")]
+            public static readonly GameplayTag MoonPhase_NewMoon = new GameplayTag("Buff.MoonPhase.NewMoon");
+            public static readonly GameplayTag MoonPhase_HalfMoon = new GameplayTag("Buff.MoonPhase.HalfMoon");
+            public static readonly GameplayTag MoonPhase_FullMoon = new GameplayTag("Buff.MoonPhase.FullMoon");
         }
 
         //Debuff
@@ -161,6 +176,13 @@ using System.Runtime.CompilerServices;
         {
             [Header("眩晕")]
             public static readonly GameplayTag Stun = new GameplayTag("Debuff.Stun");
+            [Header("脆弱（受伤加深）")]
+            public static readonly GameplayTag Vulnerable = new GameplayTag("Debuff.Vulnerable");
+            public static readonly GameplayTag Vulnerable_Nightfall = new GameplayTag("Debuff.Vulnerable.Nightfall");
+            [Header("禁疗")]
+            public static readonly GameplayTag HealBlock = new GameplayTag("Debuff.HealBlock");
+            [Header("永世怒火晶石禁疗 — 与晶石生命周期绑定")]
+            public static readonly GameplayTag HealBlock_EternalFlame = new GameplayTag("Debuff.HealBlock.EternalFlame");
         }
 
         //领域
@@ -170,6 +192,15 @@ using System.Runtime.CompilerServices;
             public static readonly GameplayTag HolyField = new GameplayTag("Zone.HolyField");
             [Header("平面屏障")]
             public static readonly GameplayTag Barrier = new GameplayTag("Zone.Barrier");
+            [Header("拉比斯十字激光")]
+            public static readonly GameplayTag LapisCross = new GameplayTag("Zone.LapisCross");
+        }
+
+        //召唤物
+        public static class Prop
+        {
+            [Header("永世怒火晶石")]
+            public static readonly GameplayTag EternalFlameCrystal = new GameplayTag("Prop.EternalFlameCrystal");
         }
 
         //伊门众神 — 椿「x神赐福」类技能 abilityTags

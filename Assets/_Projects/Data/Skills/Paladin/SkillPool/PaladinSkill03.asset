@@ -21,6 +21,7 @@ MonoBehaviour:
   areaRadius: 3
   areaRadiusMeters: 2.5
   areaWidthMeters: 2
+  sectorHalfAngleDegrees: 45
   requiredTags:
   - tagName: Job.Paladin
   blockTags: []
@@ -41,7 +42,22 @@ MonoBehaviour:
         description: "\u5BF9\u5468\u56F4\u5C0F\u8303\u56F4\u654C\u4EBA\u9020\u6210150%\u795E\u5723\u4F24\u5BB3"
         phase: 1
         targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
         chance: 1
+        requiredCasterTags: []
+        blockCasterTags: []
+        targetVfx:
+          prefab: {fileID: 4629116891520832361, guid: 15a2a89b5459d534894b0f7b460682f4,
+            type: 3}
+          timing: 1
+          anchor:
+            type: 1
+            attachPointId: Stomach
+            localOffset: {x: 0, y: 0, z: 0}
+          attachMode: 0
+          rotationMode: 3
+          autoDestroySeconds: 0
         scaler: 1.5
         damageType:
           tagName: DamageType.Divine
@@ -51,6 +67,20 @@ MonoBehaviour:
         description: "\u51FB\u9000\u8303\u56F4\u5185\u654C\u4EBA"
         phase: 1
         targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
         chance: 1
+        requiredCasterTags: []
+        blockCasterTags: []
+        targetVfx:
+          prefab: {fileID: 0}
+          timing: 0
+          anchor:
+            type: 0
+            attachPointId: 
+            localOffset: {x: 0, y: 0, z: 0}
+          attachMode: 0
+          rotationMode: 0
+          autoDestroySeconds: 3
         distanceMeters: 3
         durationSeconds: 0.35

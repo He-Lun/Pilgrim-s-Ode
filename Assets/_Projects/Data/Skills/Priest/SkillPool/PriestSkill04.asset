@@ -21,6 +21,7 @@ MonoBehaviour:
   areaRadius: 35
   areaRadiusMeters: 5
   areaWidthMeters: 2
+  sectorHalfAngleDegrees: 45
   requiredTags:
   - tagName: Job.Priest
   blockTags: []
@@ -40,15 +41,13 @@ MonoBehaviour:
         description: "\u83B7\u5F97200%\u9632\u5FA1\u529B\u52A0\u6210\uFF0C\u6301\u7EED\u4E24\u56DE\u5408"
         phase: 1
         targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
         chance: 1
-        attributeName: Defense
-        multiplicativeBonus: 2
-        durationTurns: 1
-        buffTag:
-          tagName: Buff.DefenseUp.CraneBlessing
+        requiredCasterTags: []
+        blockCasterTags: []
         targetVfx:
-          prefab: {fileID: 1687490866974584, guid: 2eeec577995fc7043a57cbe56af9a29c,
-            type: 3}
+          prefab: {fileID: 0}
           timing: 1
           anchor:
             type: 5
@@ -57,3 +56,8 @@ MonoBehaviour:
           attachMode: 1
           rotationMode: 0
           autoDestroySeconds: 1
+        attributeName: Defense
+        multiplicativeBonus: 2
+        durationTurns: 1
+        buffTag:
+          tagName: Buff.DefenseUp.CraneBlessing

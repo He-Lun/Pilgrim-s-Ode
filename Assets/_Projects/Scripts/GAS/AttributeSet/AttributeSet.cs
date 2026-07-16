@@ -108,6 +108,33 @@ using UnityEngine;
             modifiers.Clear();
         }
 
+        /// <summary>可摧毁召唤物：仅血量有意义，攻防敏捷为 0。</summary>
+        public void InitializeAsProp(float maxHealth)
+        {
+            baseHealth = Mathf.Max(1f, maxHealth);
+            baseAttack = 0f;
+            baseDefense = 0f;
+            baseAgility = 0f;
+            baseSpeed = 0f;
+            CurrentHealth = baseHealth;
+            modifiers.Clear();
+        }
+
+        /// <summary>脆弱等 Debuff 叠加的受伤倍率（1 = 无加成）。</summary>
+        public float GetDamageTakenMultiplier()
+        {
+            float amp = 0f;
+            for (int i = 0; i < modifiers.Count; i++)
+            {
+                var mod = modifiers[i];
+                if (mod.attributeName != "DamageTaken" || mod.IsExpired()) continue;
+                if (mod.operation == ModifierOperation.Multiplicative)
+                    amp += mod.value;
+            }
+
+            return Mathf.Max(0.1f, 1f + amp);
+        }
+
         // ---------- 计算最终属性值 ----------
         private float GetFinalValue(string attributeName, float baseValue)
         {
@@ -199,7 +226,32 @@ using UnityEngine;
 
         public void RemoveAllModifiers()
         {
+            if (modifiers.Count == 0) return;
+
+            var tags = new List<GameplayTag>();
+            for (int i = 0; i < modifiers.Count; i++)
+            {
+                var tag = modifiers[i].sourceTag;
+                if (string.IsNullOrEmpty(tag.TagName)) continue;
+
+                bool exists = false;
+                for (int j = 0; j < tags.Count; j++)
+                {
+                    if (tags[j].Matches(tag))
+                    {
+                        exists = true;
+                        break;
+                    }
+                }
+
+                if (!exists)
+                    tags.Add(tag);
+            }
+
             modifiers.Clear();
+
+            for (int i = 0; i < tags.Count; i++)
+                OnModifierRemoved?.Invoke(tags[i]);
         }
 
         // ---------- 生命周期更新 ----------
@@ -258,7 +310,7 @@ using UnityEngine;
             if (instigator != null && targetAsc != null)
                 damage = BattleBarrierManager.Instance.MitigateDamage(instigator, targetAsc, damage);
 
-            float finalDamage = Mathf.Max(1, damage - Defense);
+            float finalDamage = Mathf.Max(1, (damage - Defense) * GetDamageTakenMultiplier());
             float healthBefore = CurrentHealth;
             CurrentHealth -= finalDamage;
             Debug.Log($"[AttributeSet] 受到 {finalDamage} 点 {damageType} 伤害，剩余血量: {CurrentHealth}");
@@ -291,8 +343,17 @@ using UnityEngine;
                 targetAsc.NotifyDeath(instigator);
         }
 
-        public void Heal(float amount, AbilitySystemComponent instigator = null, AbilitySystemComponent target = null)
+        public void Heal(
+            float amount,
+            AbilitySystemComponent instigator = null,
+            AbilitySystemComponent target = null,
+            bool bypassHealBlock = false)
         {
+            if (amount <= 0f) return;
+
+            var targetAsc = target ?? cachedAsc ?? GetComponent<AbilitySystemComponent>();
+            if (!bypassHealBlock && !HealBlock.CanReceiveHeal(targetAsc)) return;
+
             float actualHeal = Mathf.Min(amount, MaxHealth - CurrentHealth);
             if (actualHeal <= 0) return;
 
@@ -300,7 +361,6 @@ using UnityEngine;
             CurrentHealth = newHealth;
             Debug.Log($"[AttributeSet] 治疗 {actualHeal} 点，当前血量: {CurrentHealth}");
 
-            var targetAsc = target ?? cachedAsc ?? GetComponent<AbilitySystemComponent>();
             if (instigator != null && targetAsc != null)
             {
                 CombatEventBus.Instance.Raise(new CombatEvent
@@ -311,6 +371,38 @@ using UnityEngine;
                     value = actualHeal
                 });
             }
+        }
+
+        /// <summary>
+        /// 生命消耗（献祭/自残）— 无视防御与禁疗；与 TakeDamage 分离，避免被减伤/护盾逻辑干扰。
+        /// </summary>
+        public void LoseHealth(float amount, AbilitySystemComponent instigator = null, bool leaveAtLeastOneHp = true)
+        {
+            if (amount <= 0f) return;
+
+            var targetAsc = cachedAsc ?? GetComponent<AbilitySystemComponent>();
+            float healthBefore = CurrentHealth;
+            float floor = leaveAtLeastOneHp ? 1f : 0f;
+            float actual = Mathf.Min(amount, Mathf.Max(0f, healthBefore - floor));
+            if (actual <= 0f) return;
+
+            CurrentHealth = healthBefore - actual;
+            Debug.Log($"[AttributeSet] 生命消耗 {actual} 点，剩余血量: {CurrentHealth}");
+
+            // 用 HealthCostApplied，勿发 DamageTaken，否则会进 Hit 受击态
+            if (targetAsc != null)
+            {
+                CombatEventBus.Instance.Raise(new CombatEvent
+                {
+                    type = CombatEventType.HealthCostApplied,
+                    instigator = instigator,
+                    target = targetAsc,
+                    value = actual
+                });
+            }
+
+            if (healthBefore > 0 && CurrentHealth <= 0 && targetAsc != null)
+                targetAsc.NotifyDeath(instigator);
         }
 
         public bool IsDead() => CurrentHealth <= 0;

@@ -40,11 +40,19 @@ public class CharacterDataSO : ScriptableObject
     [Header("天赋技能效果（圣骨被动等，开战自动生效）")]
     [SerializeField] public List<GameplayAbility> innateAbilities;
 
+    [Header("========== 身份 ==========")]
+    [Tooltip("可选角色身份 tag，如 Character.Luna")]
+    [SerializeField] public GameplayTag characterTag;
+
     [Header("========== 激励系统 ==========")]
     [Header("激励技能效果")]
     [SerializeField] public GameplayAbility inspirationAbility;
     [Header("激励任务")]
     [SerializeField] public InspirationTaskSO inspirationTask;
+
+    [Header("========== 月魂（露娜等）==========")]
+    [Tooltip("非空则开战初始化月魂/月相系统")]
+    [SerializeField] public MoonSoulConfigSO moonSoulConfig;
 
     /// <summary>职业池 + 角色独占技能（去重）。</summary>
     public IEnumerable<GameplayAbility> GetAllKnownAbilities()

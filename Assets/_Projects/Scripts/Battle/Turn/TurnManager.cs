@@ -85,11 +85,11 @@ public class TurnManager : MonoBehaviour
         allActors.Clear();
         allActors.AddRange(actors);
 
-        // 行动条入场
+        // 行动条入场（召唤物等 ParticipatesInActionQueue=false 会被跳过）
         actionQueue.Clear();
         foreach (var actor in allActors)
         {
-            if (actor != null)
+            if (actor != null && actor.ParticipatesInActionQueue)
                 actionQueue.Register(actor);
         }
 
@@ -110,6 +110,8 @@ public class TurnManager : MonoBehaviour
 
         BattleZoneManager.Instance.ClearAll();
         BattleBarrierManager.Instance.ClearAll();
+        BattleDestructiblePropManager.Instance.ClearAll();
+        ElectricRingManager.Instance.ClearAll();
 
         battleActive = true;
         SetPhase(TurnPhase.BattleStart);
@@ -271,6 +273,8 @@ public class TurnManager : MonoBehaviour
         CurrentActor = null;
         BattleZoneManager.Instance.ClearAll();
         BattleBarrierManager.Instance.ClearAll();
+        BattleDestructiblePropManager.Instance.ClearAll();
+        ElectricRingManager.Instance.ClearAll();
         SetPhase(TurnPhase.BattleEnd);
 
         OnBattleEnded?.Invoke(winnerTeamId);

@@ -20,6 +20,7 @@ public class CharacterMovementController : MonoBehaviour
     private float remainingMoveMeters;
     private bool isMoving;
     private float lastMoveCostMeters;
+    private readonly List<Vector3> lastMovePath = new List<Vector3>();
 
     private HashSet<Vector3> cachedReachable;
     private bool reachableDirty = true;
@@ -28,6 +29,8 @@ public class CharacterMovementController : MonoBehaviour
     public float RemainingMoveMeters => remainingMoveMeters;
     public float LastMoveCostMeters => lastMoveCostMeters;
     public bool IsMoving => isMoving;
+    /// <summary>最近一次位移折线（含起点），供领域穿行判定。</summary>
+    public IReadOnlyList<Vector3> LastMovePath => lastMovePath;
 
     public event Action<MoveResult> OnMoveFailed;
     public event Action<float> OnMoveSucceeded;
@@ -126,7 +129,77 @@ public class CharacterMovementController : MonoBehaviour
             NotifyMovementInterrupted();
         }
 
+        CaptureMovePath(transform.position, null);
         return motor.BeginKnockback(fromCenter, distanceMeters, durationSeconds);
+    }
+
+    /// <summary>沿指定世界方向击退（突进侧向推开等）。</summary>
+    public bool TryApplyKnockbackDirection(
+        Vector3 worldDirection,
+        float distanceMeters,
+        float durationSeconds = 0.35f)
+    {
+        if (distanceMeters <= 0f || motor == null) return false;
+
+        if (isMoving)
+        {
+            motor.NotifyMovementInterrupted();
+            NotifyMovementInterrupted();
+        }
+
+        CaptureMovePath(transform.position, null);
+        return motor.BeginKnockbackDirection(worldDirection, distanceMeters, durationSeconds);
+    }
+
+    /// <summary>拉取到世界落点 — 二次缓动，过程中保持眩晕。</summary>
+    public bool TryApplyPullToPoint(Vector3 destination, float durationSeconds = 0.55f)
+    {
+        if (motor == null) return false;
+
+        if (isMoving)
+        {
+            motor.NotifyMovementInterrupted();
+            NotifyMovementInterrupted();
+        }
+
+        CaptureMovePath(transform.position, new List<Vector3> { destination });
+        return motor.BeginPull(destination, durationSeconds);
+    }
+
+    /// <summary>被动位移结束时校正路径终点（拉取/击退）。</summary>
+    public void FinalizeMovePathEnd(Vector3 worldEnd)
+    {
+        if (lastMovePath.Count == 0)
+        {
+            lastMovePath.Add(worldEnd);
+            return;
+        }
+
+        if (lastMovePath.Count == 1)
+            lastMovePath.Add(worldEnd);
+        else
+            lastMovePath[lastMovePath.Count - 1] = worldEnd;
+    }
+
+    public List<Vector3> CopyLastMovePath()
+    {
+        return lastMovePath.Count > 0 ? new List<Vector3>(lastMovePath) : null;
+    }
+
+    private void CaptureMovePath(Vector3 start, List<Vector3> waypoints)
+    {
+        lastMovePath.Clear();
+        lastMovePath.Add(start);
+
+        if (waypoints == null) return;
+
+        for (int i = 0; i < waypoints.Count; i++)
+        {
+            Vector3 wp = waypoints[i];
+            if (BattleOccupancy.HorizontalDistance(lastMovePath[lastMovePath.Count - 1], wp) < 0.05f)
+                continue;
+            lastMovePath.Add(wp);
+        }
     }
 
     [System.Obsolete("Use TryApplyKnockback for smooth NavMesh-aware knockback.")]
@@ -178,11 +251,12 @@ public class CharacterMovementController : MonoBehaviour
         isMoving = true;
         reachableDirty = true;
 
+        Vector3 start = transform.position;
         var waypoints = new List<Vector3>(plan.pathPoints.Count);
         foreach (var p in plan.pathPoints)
         {
             Vector3 wp = ApplyFootOffset(p);
-            if (waypoints.Count == 0 && BattleOccupancy.HorizontalDistance(transform.position, wp) < 0.2f)
+            if (waypoints.Count == 0 && BattleOccupancy.HorizontalDistance(start, wp) < 0.2f)
                 continue;
             waypoints.Add(wp);
         }
@@ -190,11 +264,14 @@ public class CharacterMovementController : MonoBehaviour
         if (waypoints.Count == 0)
             waypoints.Add(ApplyFootOffset(plan.destination));
 
+        CaptureMovePath(start, waypoints);
+
         if (!motor.MoveAlongWorldPath(waypoints, plan.costMeters))
         {
             remainingMoveMeters += plan.costMeters;
             isMoving = false;
             reachableDirty = true;
+            lastMovePath.Clear();
             Fail(MoveResult.AlreadyMoving);
             return MoveResult.AlreadyMoving;
         }
@@ -206,7 +283,8 @@ public class CharacterMovementController : MonoBehaviour
     {
         isMoving = false;
         reachableDirty = true;
-        asc?.NotifyMoved(distanceMeters);
+        FinalizeMovePathEnd(transform.position);
+        asc?.NotifyMoved(distanceMeters, CopyLastMovePath());
         OnMoveSucceeded?.Invoke(distanceMeters);
         TurnManager.Instance?.NotifyActionResolved();
     }

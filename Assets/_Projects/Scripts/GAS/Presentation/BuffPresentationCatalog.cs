@@ -30,4 +30,23 @@ public class BuffPresentationCatalog : ScriptableObject
 
         return false;
     }
+
+    /// <summary>
+    /// 收集同一类别的全部有效特效（持续 + 获得提醒等）。
+    /// autoDestroySeconds &gt; 0 的条目由 AbilityVfxPlayer 作为一次性提醒播放。
+    /// </summary>
+    public int CollectForCategory(GameplayTag category, List<VfxSpawnEntry> results)
+    {
+        results?.Clear();
+        if (results == null || string.IsNullOrEmpty(category.TagName)) return 0;
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            var vfx = entries[i].vfx;
+            if (!entries[i].category.Matches(category) || vfx == null || !vfx.IsValid) continue;
+            results.Add(vfx);
+        }
+
+        return results.Count;
+    }
 }

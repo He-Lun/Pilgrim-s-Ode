@@ -5,12 +5,22 @@ using UnityEngine;
 /// </summary>
 public enum VfxTiming
 {
-    /// <summary>起手/施法时（动画事件 OnAbilityCastVfx）。</summary>
-    OnCast,
-    /// <summary>命中判定时（动画事件 OnAbilityHit）。</summary>
-    OnHit,
+    /// <summary>第 1 段起手（动画事件 OnAbilityCastVfx / OnCastVfx）。</summary>
+    OnCast = 0,
+    /// <summary>第 1 段命中（动画事件 OnAbilityHit / OnHit）。</summary>
+    OnHit = 1,
     /// <summary>技能收招时（动画事件 OnAbilityComplete）。</summary>
-    OnComplete
+    OnComplete = 2,
+    /// <summary>第 2 段命中（动画事件 OnAbilityHit2 / OnHit2）。</summary>
+    OnHit2 = 3,
+    /// <summary>第 3 段命中（动画事件 OnAbilityHit3 / OnHit3）。</summary>
+    OnHit3 = 4,
+    /// <summary>第 2 段起手（动画事件 OnAbilityCastVfx2 / OnCastVfx2）。</summary>
+    OnCast2 = 5,
+    /// <summary>第 3 段起手（动画事件 OnAbilityCastVfx3 / OnCastVfx3）。</summary>
+    OnCast3 = 6,
+    /// <summary>第 4 段命中（动画事件 OnAbilityHit4 / OnHit4）。</summary>
+    OnHit4 = 7
 }
 
 /// <summary>

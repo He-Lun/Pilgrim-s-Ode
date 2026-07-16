@@ -79,7 +79,10 @@ public class BattleTestBootstrap : MonoBehaviour
         WireActors(roster);
 
         if (buffPresentationCatalog != null)
+        {
             BattleBarrierManager.Instance.BindCatalog(buffPresentationCatalog);
+            BattleZoneManager.Instance.BindCatalog(buffPresentationCatalog);
+        }
 
         var turnManager = TurnManager.Instance;
         turnManager.OnTurnBegan -= HandleTurnBegan;

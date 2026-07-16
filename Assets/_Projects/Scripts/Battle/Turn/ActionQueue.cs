@@ -56,6 +56,7 @@ public class ActionQueue : MonoBehaviour
     public void Register(AbilitySystemComponent unit, float initialAdvancePercent = 0f)
     {
         if (unit == null || Find(unit) != null) return;
+        if (!unit.ParticipatesInActionQueue) return;
 
         float full = FullAV(unit);
         float av = full;

@@ -31,6 +31,40 @@ public static class BattleTargeting
         return BattleOccupancy.HorizontalDistance(a, b);
     }
 
+    /// <summary>将世界坐标投影到脚下地面（忽略角色碰撞体），供点地技能/落点特效使用。</summary>
+    public static Vector3 ProjectToGround(Vector3 worldPoint)
+    {
+        float groundY = BattleGrid.Instance != null
+            ? BattleGrid.Instance.SampleGroundY(worldPoint)
+            : SampleGroundYFallback(worldPoint);
+
+        return new Vector3(worldPoint.x, groundY, worldPoint.z);
+    }
+
+    private static float SampleGroundYFallback(Vector3 worldXZ)
+    {
+        const float rayHeight = 50f;
+        float startY = Mathf.Max(worldXZ.y + rayHeight, rayHeight);
+        var origin = new Vector3(worldXZ.x, startY, worldXZ.z);
+        float maxDistance = startY + rayHeight;
+
+        var hits = Physics.RaycastAll(
+            origin, Vector3.down, maxDistance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            var hit = hits[i];
+            if (hit.collider.GetComponentInParent<CharacterMovementController>() != null)
+                continue;
+            if (hit.normal.y < 0.5f)
+                continue;
+            return hit.point.y;
+        }
+
+        return 0f;
+    }
+
     public static bool IsAlive(AbilitySystemComponent asc)
     {
         return asc != null && asc.Attributes != null && !asc.Attributes.IsDead();
@@ -187,13 +221,39 @@ public static class BattleTargeting
         return result;
     }
 
+    /// <summary>前方扇形内过滤存活敌人（不含施法者）。</summary>
+    public static List<AbilitySystemComponent> FilterEnemiesInDirectedSector(
+        AbilitySystemComponent caster,
+        Vector3 origin,
+        Vector3 aimDirection,
+        float radiusMeters,
+        float halfAngleDegrees)
+    {
+        var result = new List<AbilitySystemComponent>();
+        if (caster == null || radiusMeters <= 0f) return result;
+
+        var sector = DirectedSectorUtility.Build(origin, aimDirection, radiusMeters, halfAngleDegrees);
+
+        foreach (var asc in FindAbilitySystemsInRadius(origin, radiusMeters))
+        {
+            if (asc == null || asc == caster) continue;
+            if (!IsAlive(asc)) continue;
+            if (!caster.IsEnemy(asc)) continue;
+            if (!DirectedSectorUtility.ContainsPoint(sector, asc.transform.position)) continue;
+            if (!result.Contains(asc))
+                result.Add(asc);
+        }
+
+        return result;
+    }
+
     /// <summary>预览 DirectedRect 内会被命中的敌人。</summary>
     public static List<AbilitySystemComponent> PreviewDirectedRectTargets(
         AbilitySystemComponent caster,
         GameplayAbility ability,
         Vector3 aimDirection)
     {
-        if (caster == null || ability == null || ability.targetScope != TargetScope.DirectedRect)
+        if (caster == null || ability == null)
             return new List<AbilitySystemComponent>();
 
         return FilterEnemiesInDirectedRect(
@@ -214,6 +274,56 @@ public static class BattleTargeting
             return context.GetExplicitTargets();
 
         return ability.ResolveEffectTargets(caster, context);
+    }
+
+    /// <summary>按指定 TargetScope 解析目标（GA / Effect Override 共用）。</summary>
+    public static List<AbilitySystemComponent> ResolveByScope(
+        AbilitySystemComponent caster,
+        AbilityActivationContext context,
+        TargetScope scope,
+        float radiusMeters,
+        float widthMeters,
+        float sectorHalfAngleDegrees = 45f)
+    {
+        if (caster == null)
+            return new List<AbilitySystemComponent>();
+
+        switch (scope)
+        {
+            case TargetScope.Self:
+                return new List<AbilitySystemComponent> { caster };
+
+            case TargetScope.AreaAroundSelf:
+                return FilterEnemiesInRadius(caster, caster.transform.position, radiusMeters);
+
+            case TargetScope.AllAllies:
+                return FilterAllies(caster, includeCaster: true);
+
+            case TargetScope.AllEnemies:
+                return FilterEnemies(caster);
+
+            case TargetScope.DirectedRect:
+            {
+                Vector3 origin = caster.transform.position;
+                Vector3 aim = DirectedRectUtility.ResolveAimDirection(context, origin);
+                return FilterEnemiesInDirectedRect(caster, origin, aim, radiusMeters, widthMeters);
+            }
+
+            case TargetScope.DirectedSector:
+            {
+                Vector3 origin = caster.transform.position;
+                Vector3 aim = DirectedRectUtility.ResolveAimDirection(context, origin);
+                return FilterEnemiesInDirectedSector(
+                    caster, origin, aim, radiusMeters, sectorHalfAngleDegrees);
+            }
+
+            case TargetScope.Area:
+                if (context.HasTargetPoint)
+                    return FilterEnemiesInRadius(caster, context.targetWorldPoint, radiusMeters);
+                break;
+        }
+
+        return context.GetExplicitTargets();
     }
 
     /// <summary>单体/指向技能的施法距离（米）。与 AOE 半径共用 GA 上的 range 字段。</summary>
@@ -248,6 +358,7 @@ public static class BattleTargeting
             case TargetScope.Area:
             case TargetScope.AreaAroundSelf:
             case TargetScope.DirectedRect:
+            case TargetScope.DirectedSector:
                 return false;
 
             default:
@@ -259,6 +370,22 @@ public static class BattleTargeting
 
         float range = GetCastRangeMeters(ability);
         return HorizontalDistance(caster.transform.position, target.transform.position) <= range;
+    }
+
+    public static List<AbilitySystemComponent> PreviewDirectedSectorTargets(
+        AbilitySystemComponent caster,
+        GameplayAbility ability,
+        Vector3 aimDirection)
+    {
+        if (caster == null || ability == null)
+            return new List<AbilitySystemComponent>();
+
+        return FilterEnemiesInDirectedSector(
+            caster,
+            caster.transform.position,
+            aimDirection,
+            ability.GetAreaRadiusMeters(),
+            ability.GetSectorHalfAngleDegrees());
     }
 
     public static List<AbilitySystemComponent> GetValidTargetsInRange(
@@ -277,7 +404,8 @@ public static class BattleTargeting
         }
 
         if (ability.targetScope == TargetScope.AreaAroundSelf
-            || ability.targetScope == TargetScope.DirectedRect)
+            || ability.targetScope == TargetScope.DirectedRect
+            || ability.targetScope == TargetScope.DirectedSector)
             return result;
 
         foreach (var candidate in candidates)

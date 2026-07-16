@@ -1,6 +1,6 @@
 /// <summary>
 /// 眩晕状态 — 持有 Debuff.Stun 期间锁定，不可被 Move/Ability 打断。
-/// Hit / Knockback / Death 可短暂打断；收招后若标签仍在则回到 Stun。
+/// Hit / Knockback / Pull / Death 可短暂打断；收招后若标签仍在则回到 Stun。
 /// </summary>
 public class StunState : ICharacterState
 {
@@ -26,5 +26,6 @@ public class StunState : ICharacterState
     public bool CanBeInterruptedBy(CharacterStateType other) =>
         other == CharacterStateType.Death
         || other == CharacterStateType.Knockback
+        || other == CharacterStateType.Pull
         || other == CharacterStateType.Hit;
 }

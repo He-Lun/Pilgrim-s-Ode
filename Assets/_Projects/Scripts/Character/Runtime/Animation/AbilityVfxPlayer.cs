@@ -13,6 +13,7 @@ public class AbilityVfxPlayer : MonoBehaviour
     [SerializeField] private float defaultAutoDestroySeconds = 3f;
 
     private readonly Dictionary<GameplayTag, GameObject> activeCategoryVfx = new Dictionary<GameplayTag, GameObject>();
+    private readonly List<VfxSpawnEntry> categoryVfxBuffer = new List<VfxSpawnEntry>();
     private AbilitySystemComponent asc;
 
     void Awake()
@@ -89,12 +90,28 @@ public class AbilityVfxPlayer : MonoBehaviour
         if (presentationCatalog == null) return;
 
         var category = BuffCategoryTag.Resolve(evt.tag);
-        if (activeCategoryVfx.ContainsKey(category)) return;
-        if (!presentationCatalog.TryGet(category, out var entry)) return;
+        if (presentationCatalog.CollectForCategory(category, categoryVfxBuffer) == 0) return;
 
-        var instance = CreateInstance(entry, AbilityActivationContext.Self(), transform);
-        if (instance != null)
+        var context = AbilityActivationContext.Self();
+        bool hasSustainActive = activeCategoryVfx.ContainsKey(category);
+
+        for (int i = 0; i < categoryVfxBuffer.Count; i++)
+        {
+            var entry = categoryVfxBuffer[i];
+            if (entry.autoDestroySeconds > 0f)
+            {
+                SpawnOneShot(entry, context, transform);
+                continue;
+            }
+
+            if (hasSustainActive) continue;
+
+            var instance = CreateInstance(entry, context, transform);
+            if (instance == null) continue;
+
             activeCategoryVfx[category] = instance;
+            hasSustainActive = true;
+        }
     }
 
     private void HandleTagRemoved(GameplayTag tag)
@@ -189,7 +206,7 @@ public class AbilityVfxPlayer : MonoBehaviour
                 if (!context.hasTargetPoint && !(context.hasAimDirection && caster != null))
                     return false;
                 basePos = context.hasTargetPoint
-                    ? context.targetWorldPoint
+                    ? BattleTargeting.ProjectToGround(context.targetWorldPoint)
                     : caster.position + context.aimDirectionWorld;
                 break;
 

@@ -42,11 +42,12 @@ public class HyperArmorAbilityEffect : AbilityEffect
         GameplayAbility sourceAbility,
         AbilityActivationContext context)
     {
-        if (!RollChance() || caster == null || sourceAbility == null)
+        if (!ShouldExecute(caster) || sourceAbility == null)
             return;
 
         var targets = ResolveTargets(caster, sourceAbility, context);
         ApplyHyperArmor(caster, targets);
+        PlayTargetVfx(caster, targets);
     }
 
     public override void Execute(AbilitySystemComponent caster, List<AbilitySystemComponent> targets)

@@ -78,6 +78,8 @@ public struct AbilityActivationContext
 
     public static AbilityActivationContext WithTargetPoint(Vector3 worldPoint)
     {
+        worldPoint = BattleTargeting.ProjectToGround(worldPoint);
+
         return new AbilityActivationContext
         {
             targetWorldPoint = worldPoint,

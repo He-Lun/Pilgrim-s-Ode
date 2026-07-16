@@ -24,6 +24,8 @@ public class CharacterMotor : MonoBehaviour
     private bool isMoving;
     private GameplayAbility activeAbility;
     private AbilityActivationContext activeAbilityContext;
+    private DashChargeSpec? pendingDashCharge;
+    private bool dashChargeMovementAuthorized;
 
     public CharacterStateMachine StateMachine => stateMachine;
     public CharacterAnimatorDriver AnimatorDriver => animatorDriver;
@@ -52,6 +54,9 @@ public class CharacterMotor : MonoBehaviour
     public bool IsChanneling =>
         asc != null && asc.IsChanneling;
 
+    /// <summary>突进动画事件 OnDashChargeStart 已触发，DashChargeState 可开始位移。</summary>
+    public bool DashChargeMovementAuthorized => dashChargeMovementAuthorized;
+
     /// <summary>本回合是否可发起移动。引导中不封锁：点地/移动会先取消引导。</summary>
     public bool CanAcceptMove =>
         CanPerformPlayerAction
@@ -61,7 +66,9 @@ public class CharacterMotor : MonoBehaviour
     /// <summary>是否可进入技能表现（含插入行动；移动中不可施法）。</summary>
     public bool CanAcceptAbilityPresentation()
     {
-        if (IsDead || IsStunned || isMoving || stateMachine.CurrentType == CharacterStateType.Ability)
+        if (IsDead || IsStunned || isMoving
+            || stateMachine.CurrentType == CharacterStateType.Ability
+            || stateMachine.CurrentType == CharacterStateType.DashCharge)
             return false;
 
         bool isInsert = TurnManager.Instance != null
@@ -70,7 +77,24 @@ public class CharacterMotor : MonoBehaviour
         if (!isInsert && !CanPerformPlayerAction)
             return false;
 
-        return stateMachine.CanTransitionTo(CharacterStateType.Ability);
+        return stateMachine.CanTransitionTo(CharacterStateType.Ability)
+               || stateMachine.CanTransitionTo(CharacterStateType.DashCharge);
+    }
+
+    private bool CanAcceptDashChargePresentation()
+    {
+        if (IsDead || IsStunned || isMoving
+            || stateMachine.CurrentType == CharacterStateType.Ability
+            || stateMachine.CurrentType == CharacterStateType.DashCharge)
+            return false;
+
+        bool isInsert = TurnManager.Instance != null
+                        && TurnManager.Instance.CurrentActor != asc;
+
+        if (!isInsert && !CanPerformPlayerAction)
+            return false;
+
+        return stateMachine.CanTransitionTo(CharacterStateType.DashCharge);
     }
 
     void Awake()
@@ -92,7 +116,9 @@ public class CharacterMotor : MonoBehaviour
             new HitState(),
             new DeathState(),
             new KnockbackState(),
-            new StunState()
+            new StunState(),
+            new DashChargeState(),
+            new PullState()
         });
         stateMachine.TryTransition(CharacterStateType.Idle, default, force: true);
     }
@@ -174,6 +200,56 @@ public class CharacterMotor : MonoBehaviour
     // ── 击退 ──────────────────────────────────────────
 
     /// <summary>被动击退 — 绕过回合权限，进入 KnockbackState 平滑位移。</summary>
+    /// <summary>Immediate 突进效果在 AbilityUsed 前写入，表现阶段切入 DashChargeState。</summary>
+    public void ScheduleDashCharge(DashChargeSpec spec) => pendingDashCharge = spec;
+
+    public bool BeginDashChargePresentation(GameplayAbility ability, AbilityActivationContext context)
+    {
+        if (ability == null)
+            return false;
+
+        if (!pendingDashCharge.HasValue)
+            return BeginAbilityPresentation(ability, context);
+
+        if (!CanAcceptDashChargePresentation())
+        {
+            pendingDashCharge = null;
+            return false;
+        }
+
+        var payload = CharacterStatePayload.ForDashCharge(
+            ability,
+            context,
+            pendingDashCharge.Value);
+
+        if (!stateMachine.TryTransition(CharacterStateType.DashCharge, payload, force: true))
+        {
+            pendingDashCharge = null;
+            return false;
+        }
+
+        pendingDashCharge = null;
+        isMoving = true;
+        dashChargeMovementAuthorized = false;
+        activeAbility = ability;
+        activeAbilityContext = context;
+        return true;
+    }
+
+    public bool BeginKnockbackDirection(Vector3 worldDirection, float distanceMeters, float durationSeconds)
+    {
+        if (IsDead || distanceMeters <= 0f) return false;
+
+        NotifyMovementInterrupted();
+
+        var payload = CharacterStatePayload.ForKnockbackDirection(worldDirection, distanceMeters, durationSeconds);
+        if (!stateMachine.TryTransition(CharacterStateType.Knockback, payload, force: true))
+            return false;
+
+        isMoving = true;
+        return true;
+    }
+
     public bool BeginKnockback(Vector3 fromCenter, float distanceMeters, float durationSeconds)
     {
         if (IsDead || distanceMeters <= 0f) return false;
@@ -193,7 +269,39 @@ public class CharacterMotor : MonoBehaviour
         isMoving = false;
         movement?.InvalidateReachableCache();
         if (distanceMeters > 0.01f)
-            asc?.NotifyMoved(distanceMeters);
+        {
+            movement?.FinalizeMovePathEnd(transform.position);
+            asc?.NotifyMoved(distanceMeters, movement?.CopyLastMovePath());
+        }
+        ReturnToIdle();
+    }
+
+    // ── 拉取 ──────────────────────────────────────────
+
+    /// <summary>被动拉取到落点 — 二次缓动，过程中保持眩晕表现。</summary>
+    public bool BeginPull(Vector3 destination, float durationSeconds)
+    {
+        if (IsDead) return false;
+
+        NotifyMovementInterrupted();
+
+        var payload = CharacterStatePayload.ForPull(destination, durationSeconds);
+        if (!stateMachine.TryTransition(CharacterStateType.Pull, payload, force: true))
+            return false;
+
+        isMoving = true;
+        return true;
+    }
+
+    public void CompletePull(float distanceMeters)
+    {
+        isMoving = false;
+        movement?.InvalidateReachableCache();
+        if (distanceMeters > 0.01f)
+        {
+            movement?.FinalizeMovePathEnd(transform.position);
+            asc?.NotifyMoved(distanceMeters, movement?.CopyLastMovePath());
+        }
         ReturnToIdle();
     }
 
@@ -213,32 +321,70 @@ public class CharacterMotor : MonoBehaviour
         return true;
     }
 
-    /// <summary>动画事件 OnAbilityCastVfx</summary>
-    public void PlayActiveAbilityCastVfx() => PlayAbilityVfx(VfxTiming.OnCast);
+    /// <summary>动画事件 OnAbilityCastVfx / OnCastVfx2 / OnCastVfx3</summary>
+    public void PlayActiveAbilityCastVfx(VfxTiming timing = VfxTiming.OnCast)
+    {
+        if (timing != VfxTiming.OnCast
+            && timing != VfxTiming.OnCast2
+            && timing != VfxTiming.OnCast3)
+            timing = VfxTiming.OnCast;
 
-    /// <summary>动画事件 OnAbilityHit</summary>
-    public void OnAbilityHitEvent()
+        PlayAbilityVfx(timing);
+    }
+
+    /// <summary>动画事件 OnAbilityHit / OnHit2 / OnHit3 / OnHit4</summary>
+    public void OnAbilityHitEvent(AbilityEffectPhase hitPhase = AbilityEffectPhase.OnHit)
     {
         if (asc == null || !asc.HasPendingAbility) return;
         if (stateMachine.CurrentType != CharacterStateType.Ability) return;
+        if (!IsHitPhase(hitPhase)) return;
 
-        PlayAbilityVfx(VfxTiming.OnHit);
-
-        asc.ResolvePendingAbilityPhase(AbilityEffectPhase.OnHit);
+        PlayAbilityVfx(ToHitVfxTiming(hitPhase));
+        asc.ResolvePendingAbilityPhase(hitPhase);
     }
 
-    /// <summary>动画事件 OnAbilityComplete</summary>
+    private static bool IsHitPhase(AbilityEffectPhase phase)
+    {
+        return phase == AbilityEffectPhase.OnHit
+            || phase == AbilityEffectPhase.OnHit2
+            || phase == AbilityEffectPhase.OnHit3
+            || phase == AbilityEffectPhase.OnHit4;
+    }
+
+    private static VfxTiming ToHitVfxTiming(AbilityEffectPhase phase)
+    {
+        switch (phase)
+        {
+            case AbilityEffectPhase.OnHit2: return VfxTiming.OnHit2;
+            case AbilityEffectPhase.OnHit3: return VfxTiming.OnHit3;
+            case AbilityEffectPhase.OnHit4: return VfxTiming.OnHit4;
+            default: return VfxTiming.OnHit;
+        }
+    }
+
+    /// <summary>动画事件 OnAbilityComplete — Ability 与 DashCharge 共用收招。</summary>
     public void OnAbilityCompleteEvent()
     {
-        if (asc == null || stateMachine.CurrentType != CharacterStateType.Ability) return;
-        if (!asc.HasPendingAbility) return;
+        if (asc == null || !asc.HasPendingAbility) return;
+
+        var state = stateMachine.CurrentType;
+        if (state != CharacterStateType.Ability && state != CharacterStateType.DashCharge)
+            return;
 
         PlayAbilityVfx(VfxTiming.OnComplete);
 
         asc.ResolvePendingAbilityPhase(AbilityEffectPhase.OnComplete);
         asc.ClearPendingAbility();
         ClearActiveAbilityPresentation();
+        ResetDashChargeMovementGate();
         ReturnToIdle();
+    }
+
+    /// <summary>动画事件 OnDashChargeStart — 蓄力结束，突进位移开始。</summary>
+    public void OnDashChargeStartEvent()
+    {
+        if (stateMachine.CurrentType != CharacterStateType.DashCharge) return;
+        dashChargeMovementAuthorized = true;
     }
 
     private void PlayAbilityVfx(VfxTiming timing)
@@ -255,8 +401,13 @@ public class CharacterMotor : MonoBehaviour
     {
         if (IsDead || HasHyperArmor) return;
 
+        // 跑步/突进中受击：立刻停位移，再进 Hit（避免跑完才结算）
+        InterruptLocomotionForHit();
+
         if (stateMachine.CurrentType == CharacterStateType.Hit)
         {
+            animatorDriver?.SetMoving(false);
+            animatorDriver?.SetSpeed(0f);
             animatorDriver?.TriggerHit();
             return;
         }
@@ -264,11 +415,36 @@ public class CharacterMotor : MonoBehaviour
         if (!stateMachine.TryTransition(CharacterStateType.Hit, default, force: true))
             return;
 
+        animatorDriver?.SetMoving(false);
+        animatorDriver?.SetSpeed(0f);
+
         CombatEventBus.Instance.Raise(new CombatEvent
         {
             type = CombatEventType.HitReacted,
             target = asc
         });
+    }
+
+    /// <summary>受击时打断主动位移（Move / DashCharge），并结算本轮移动动作。</summary>
+    private void InterruptLocomotionForHit()
+    {
+        var type = stateMachine.CurrentType;
+        bool inLocomotion = type == CharacterStateType.Move
+                            || type == CharacterStateType.DashCharge
+                            || isMoving
+                            || (movement != null && movement.IsMoving);
+
+        if (!inLocomotion)
+            return;
+
+        bool wasPlayerMove = type == CharacterStateType.Move || (movement != null && movement.IsMoving);
+
+        animatorDriver?.SetMoving(false);
+        animatorDriver?.SetSpeed(0f);
+        NotifyMovementInterrupted();
+
+        if (wasPlayerMove)
+            TurnManager.Instance?.NotifyActionResolved();
     }
 
     /// <summary>动画事件 OnHitComplete — 逻辑收招 + 驱动 Animator 离开 Hit。</summary>
@@ -341,6 +517,8 @@ public class CharacterMotor : MonoBehaviour
         animatorDriver?.StopSkill();
     }
 
+    private void ResetDashChargeMovementGate() => dashChargeMovementAuthorized = false;
+
     private void HandleCombatEvent(CombatEvent evt)
     {
         if (evt.instigator == asc && evt.type == CombatEventType.AbilityUsed && evt.ability != null)
@@ -353,7 +531,8 @@ public class CharacterMotor : MonoBehaviour
                     : AbilityActivationContext.Self();
             }
 
-            BeginAbilityPresentation(evt.ability, ctx);
+            if (!BeginDashChargePresentation(evt.ability, ctx))
+                BeginAbilityPresentation(evt.ability, ctx);
             return;
         }
 

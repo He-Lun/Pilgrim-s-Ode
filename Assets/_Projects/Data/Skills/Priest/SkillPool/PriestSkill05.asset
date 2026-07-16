@@ -21,6 +21,7 @@ MonoBehaviour:
   areaRadius: 35
   areaRadiusMeters: 5
   areaWidthMeters: 2
+  sectorHalfAngleDegrees: 45
   requiredTags:
   - tagName: Job.Priest
   blockTags: []
@@ -41,7 +42,22 @@ MonoBehaviour:
         description: "\u542F\u52A8\u7948\u798F\u4EEA\u5F0F\uFF0C\u5728\u4EEA\u5F0F\u671F\u95F4\uFF0C\u76EE\u6807\u53CB\u65B9\u89D2\u8272\u589E\u76CA\u6548\u679C\u56DE\u5408\u6570\u4E0D\u4F1A\u51CF\u5C11\uFF0C\u4EEA\u5F0F\u53EF\u88AB\u653B\u51FB\u6253\u65AD"
         phase: 0
         targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
         chance: 1
+        requiredCasterTags: []
+        blockCasterTags: []
+        targetVfx:
+          prefab: {fileID: 7111470932628664318, guid: 5d55615a23db03f468b6720772834d88,
+            type: 3}
+          timing: 0
+          anchor:
+            type: 1
+            attachPointId: Stomach
+            localOffset: {x: 0, y: 0, z: 0}
+          attachMode: 1
+          rotationMode: 0
+          autoDestroySeconds: 0
         channelTag:
           tagName: State.Channeling
         wardTag:

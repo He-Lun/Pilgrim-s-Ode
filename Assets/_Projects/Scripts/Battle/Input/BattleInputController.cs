@@ -243,7 +243,7 @@ public class BattleInputController : MonoBehaviour
         if (!Physics.Raycast(ray, out RaycastHit hit, 500f, groundLayer, QueryTriggerInteraction.Ignore))
             return false;
 
-        hitPoint = hit.point;
+        hitPoint = BattleTargeting.ProjectToGround(hit.point);
         return true;
     }
 }

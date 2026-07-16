@@ -1,0 +1,114 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78dd6cfcb7b7f294fab2f298d384ab35, type: 3}
+  m_Name: BerserkerSkill03
+  m_EditorClassIdentifier: 
+  abilityName: "\u5168\u529B\u4E00\u51FB"
+  description: "\u9020\u6210\u4E00\u6B21\u5DE8\u5927\u7684\u7269\u7406\u653B\u51FB\uFF0C\u72C2\u66B4\u6A21\u5F0F\u4E0B\u9020\u6210\u5927\u5E45\u5EA6\u51FB\u9000"
+  icon: {fileID: 0}
+  actionPointCost: 5
+  isInstant: 1
+  targetScope: 6
+  areaRadius: 1
+  areaRadiusMeters: 3
+  areaWidthMeters: 2
+  sectorHalfAngleDegrees: 45
+  requiredTags:
+  - tagName: Job.Berserker
+  blockTags: []
+  abilityTags: []
+  animTrigger: SkillIndex
+  skillAnimIndex: 4
+  defaultVfx: []
+  effects:
+  - rid: 3699152138997596166
+  - rid: 3699152138997596167
+  - rid: 3699152138997596171
+  references:
+    version: 2
+    RefIds:
+    - rid: 3699152138997596166
+      type: {class: DamageEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u9020\u6210510%\u7269\u7406\u4F24\u5BB3"
+        phase: 1
+        targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
+        chance: 1
+        requiredCasterTags:
+        - tagName: Buff.Anger
+        blockCasterTags: []
+        targetVfx:
+          prefab: {fileID: 4181101764326029096, guid: 9430365d95bc1aa458a9168bf9c29c74,
+            type: 3}
+          timing: 1
+          anchor:
+            type: 1
+            attachPointId: Stomach
+            localOffset: {x: 0, y: 0, z: 0}
+          attachMode: 0
+          rotationMode: 0
+          autoDestroySeconds: 0
+        scaler: 5.1
+        damageType:
+          tagName: DamageType.Physical
+    - rid: 3699152138997596167
+      type: {class: DamageEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u9020\u6210350%\u7269\u7406\u4F24\u5BB3"
+        phase: 1
+        targetSelection: 2
+        targetScope: 6
+        areaRadiusMetersOverride: 2
+        chance: 1
+        requiredCasterTags: []
+        blockCasterTags:
+        - tagName: Buff.Anger
+        targetVfx:
+          prefab: {fileID: 4181101764326029096, guid: 9430365d95bc1aa458a9168bf9c29c74,
+            type: 3}
+          timing: 1
+          anchor:
+            type: 1
+            attachPointId: Stomach
+            localOffset: {x: 0, y: 0, z: 0}
+          attachMode: 0
+          rotationMode: 0
+          autoDestroySeconds: 0
+        scaler: 3.5
+        damageType:
+          tagName: DamageType.Physical
+    - rid: 3699152138997596171
+      type: {class: KnockbackAbilityEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u51FB\u9000\u654C\u4EBA"
+        phase: 1
+        targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
+        chance: 1
+        requiredCasterTags:
+        - tagName: Buff.Anger
+        blockCasterTags: []
+        targetVfx:
+          prefab: {fileID: 0}
+          timing: 0
+          anchor:
+            type: 0
+            attachPointId: 
+            localOffset: {x: 0, y: 0, z: 0}
+          attachMode: 0
+          rotationMode: 0
+          autoDestroySeconds: 3
+        distanceMeters: 4
+        durationSeconds: 0.75

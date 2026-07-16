@@ -12,6 +12,7 @@ using UnityEngine;
         [SerializeField] private List<GameplayTag> appliedTags = new List<GameplayTag>();
         private InspirationTaskTracker inspirationTracker = new InspirationTaskTracker();
         private RitualChannelTracker ritualTracker = new RitualChannelTracker();
+        private MoonSoulTracker moonSoulTracker = new MoonSoulTracker();
 
         [Header("========== 角色配置 ==========")]
         [SerializeField] private CharacterDataSO characterData;
@@ -24,6 +25,9 @@ using UnityEngine;
         private GameplayAbility pendingAbility;
         private AbilityActivationContext pendingContext;
         private bool pendingHitResolved;
+        private bool pendingHit2Resolved;
+        private bool pendingHit3Resolved;
+        private bool pendingHit4Resolved;
         private bool pendingCompleteResolved;
 
         [Header("========== 阵营 ==========")]
@@ -32,14 +36,20 @@ using UnityEngine;
         [Header("========== 阵营资源 ==========")]
         [SerializeField] private TeamResourceManager teamResource;
 
+        [Tooltip("可摧毁召唤物等：有血量/名字，但不进入行动条")]
+        [SerializeField] private bool participatesInActionQueue = true;
+
         public TeamResourceManager TeamResource => teamResource;
         public int TeamId => teamId;
+        public bool ParticipatesInActionQueue => participatesInActionQueue;
         public CharacterDataSO CharacterData => characterData;
         public IReadOnlyList<GameplayAbility> KnownAbilities => knownAbilities;
         public GameplayAbility InspirationAbility => inspirationAbility;
         public InspirationTaskTracker InspirationTracker => inspirationTracker;
         public RitualChannelTracker RitualTracker => ritualTracker;
+        public MoonSoulTracker MoonSoul => moonSoulTracker;
         public bool IsChanneling => ritualTracker.IsActive;
+        public bool HasMoonSoul => moonSoulTracker != null && moonSoulTracker.IsBound;
 
         public bool HasPendingAbility => pendingAbility != null;
 
@@ -71,6 +81,7 @@ using UnityEngine;
         {
             inspirationTracker.Dispose();
             ritualTracker.Dispose();
+            moonSoulTracker.Dispose();
             if (attributes != null)
                 attributes.OnModifierRemoved -= HandleModifierRemoved;
         }
@@ -85,6 +96,41 @@ using UnityEngine;
             teamResource = resource;
             teamId = team;
             appliedTags.Clear();
+        }
+
+        /// <summary>可摧毁召唤物：阵营与施法者相同，无队伍资源，默认不进入行动条。</summary>
+        public void InitializeAsProp(AttributeSet attrs, int team)
+        {
+            Initialize(attrs, resource: null, team);
+            participatesInActionQueue = false;
+            characterData = null;
+        }
+
+        public void SetParticipatesInActionQueue(bool value) => participatesInActionQueue = value;
+
+        /// <summary>信息面板显示名：角色数据 → 召唤物组件 → 物体名。</summary>
+        public string GetDisplayName()
+        {
+            if (characterData != null && !string.IsNullOrEmpty(characterData.name))
+                return characterData.name;
+
+            var prop = GetComponent<DestructibleBattleProp>();
+            if (prop != null && !string.IsNullOrEmpty(prop.DisplayName))
+                return prop.DisplayName;
+
+            return gameObject.name;
+        }
+
+        public string GetDisplayDescription()
+        {
+            if (characterData != null && !string.IsNullOrEmpty(characterData.description))
+                return characterData.description;
+
+            var prop = GetComponent<DestructibleBattleProp>();
+            if (prop != null && !string.IsNullOrEmpty(prop.Description))
+                return prop.Description;
+
+            return string.Empty;
         }
 
         public void SetupFromCharacterData(CharacterDataSO data, TeamResourceManager resource, int team = 0)
@@ -107,6 +153,7 @@ using UnityEngine;
             SetupPassives();
 
             inspirationTracker.Initialize(data.inspirationTask, data.inspirationAbility, this);
+            moonSoulTracker.Initialize(this, data.moonSoulConfig);
         }
 
         private void ApplyIdentityTags(CharacterDataSO data)
@@ -115,6 +162,8 @@ using UnityEngine;
                 AddTag(data.job);
             if (!string.IsNullOrEmpty(data.kingdom.TagName))
                 AddTag(data.kingdom);
+            if (!string.IsNullOrEmpty(data.characterTag.TagName))
+                AddTag(data.characterTag);
         }
 
         private void RebuildKnownAbilities(CharacterDataSO data)
@@ -142,6 +191,9 @@ using UnityEngine;
             pendingAbility = ability;
             pendingContext = context;
             pendingHitResolved = false;
+            pendingHit2Resolved = false;
+            pendingHit3Resolved = false;
+            pendingHit4Resolved = false;
             pendingCompleteResolved = false;
         }
 
@@ -149,15 +201,28 @@ using UnityEngine;
         {
             if (pendingAbility == null) return;
 
-            if (phase == AbilityEffectPhase.OnHit)
+            switch (phase)
             {
-                if (pendingHitResolved) return;
-                pendingHitResolved = true;
-            }
-            else if (phase == AbilityEffectPhase.OnComplete)
-            {
-                if (pendingCompleteResolved) return;
-                pendingCompleteResolved = true;
+                case AbilityEffectPhase.OnHit:
+                    if (pendingHitResolved) return;
+                    pendingHitResolved = true;
+                    break;
+                case AbilityEffectPhase.OnHit2:
+                    if (pendingHit2Resolved) return;
+                    pendingHit2Resolved = true;
+                    break;
+                case AbilityEffectPhase.OnHit3:
+                    if (pendingHit3Resolved) return;
+                    pendingHit3Resolved = true;
+                    break;
+                case AbilityEffectPhase.OnHit4:
+                    if (pendingHit4Resolved) return;
+                    pendingHit4Resolved = true;
+                    break;
+                case AbilityEffectPhase.OnComplete:
+                    if (pendingCompleteResolved) return;
+                    pendingCompleteResolved = true;
+                    break;
             }
 
             pendingAbility.ExecuteEffectsByPhase(this, pendingContext, phase);
@@ -167,6 +232,9 @@ using UnityEngine;
         {
             pendingAbility = null;
             pendingHitResolved = false;
+            pendingHit2Resolved = false;
+            pendingHit3Resolved = false;
+            pendingHit4Resolved = false;
             pendingCompleteResolved = false;
         }
 
@@ -245,8 +313,20 @@ using UnityEngine;
 
         public void RemoveTag(GameplayTag tag)
         {
+            if (!appliedTags.HasTag(tag)) return;
             appliedTags.RemoveTag(tag);
             OnTagRemoved?.Invoke(tag);
+        }
+
+        /// <summary>清除全部运行时标签（逐个触发 OnTagRemoved，供表现层收尾）。</summary>
+        public void ClearAllTags()
+        {
+            if (appliedTags.Count == 0) return;
+
+            var snapshot = new List<GameplayTag>(appliedTags);
+            appliedTags.Clear();
+            for (int i = 0; i < snapshot.Count; i++)
+                OnTagRemoved?.Invoke(snapshot[i]);
         }
 
         public bool HasAnyTag(List<GameplayTag> tags)
@@ -318,15 +398,17 @@ using UnityEngine;
 
         /// <summary>
         /// 广播移动事件（供移动系统调用），distanceMeters 为本次移动米数。
+        /// movePathPoints 含起点的折线，供领域“穿行即伤”判定。
         /// </summary>
-        public void NotifyMoved(float distanceMeters)
+        public void NotifyMoved(float distanceMeters, List<Vector3> movePathPoints = null)
         {
             CombatEventBus.Instance.Raise(new CombatEvent
             {
                 type = CombatEventType.CharacterMoved,
                 instigator = this,
                 value = distanceMeters,
-                intValue = Mathf.Max(1, Mathf.RoundToInt(distanceMeters))
+                intValue = Mathf.Max(1, Mathf.RoundToInt(distanceMeters)),
+                movePathPoints = movePathPoints
             });
         }
 
@@ -335,6 +417,14 @@ using UnityEngine;
 
         public void NotifyDeath(AbilitySystemComponent killer)
         {
+            InterruptRitualIfAny();
+            ClearPendingAbility();
+            moonSoulTracker.Dispose();
+
+            // 先清修改器再清 tag，避免残留 Buff/眩晕等状态
+            attributes?.RemoveAllModifiers();
+            ClearAllTags();
+
             OnDeath?.Invoke(this);
 
             CombatEventBus.Instance.Raise(new CombatEvent

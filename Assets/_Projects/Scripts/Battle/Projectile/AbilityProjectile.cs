@@ -158,7 +158,7 @@ public class AbilityProjectile : MonoBehaviour
         var ctx = new AbilityActivationContext
         {
             explicitTargets = hits ?? new List<AbilitySystemComponent>(),
-            targetWorldPoint = transform.position,
+            targetWorldPoint = BattleTargeting.ProjectToGround(transform.position),
             hasTargetPoint = true
         };
 

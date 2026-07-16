@@ -21,6 +21,7 @@ MonoBehaviour:
   areaRadius: 5
   areaRadiusMeters: 5
   areaWidthMeters: 2
+  sectorHalfAngleDegrees: 45
   requiredTags:
   - tagName: Job.Priest
   blockTags: []
@@ -40,7 +41,22 @@ MonoBehaviour:
         description: "\u9020\u6210\u4E00\u6B21110%\u653B\u51FB\u529B\u7684\u7269\u7406\u653B\u51FB"
         phase: 1
         targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
         chance: 1
+        requiredCasterTags: []
+        blockCasterTags: []
+        targetVfx:
+          prefab: {fileID: 5529381066828500132, guid: d5154ec4507152843b0af4bb32531e61,
+            type: 3}
+          timing: 1
+          anchor:
+            type: 5
+            attachPointId: Stomach
+            localOffset: {x: 0, y: 0, z: 0}
+          attachMode: 1
+          rotationMode: 0
+          autoDestroySeconds: 0
         scaler: 1.1
         damageType:
           tagName: DamageType.Physical

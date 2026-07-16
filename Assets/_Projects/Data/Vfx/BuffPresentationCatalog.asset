@@ -89,3 +89,93 @@ MonoBehaviour:
       attachMode: 0
       rotationMode: 0
       autoDestroySeconds: 0
+  - category:
+      tagName: Zone.LapisCross
+    vfx:
+      prefab: {fileID: 0}
+      timing: 1
+      anchor:
+        type: 4
+        attachPointId: 
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 0
+      rotationMode: 3
+      autoDestroySeconds: 0
+  - category:
+      tagName: Buff.Anger
+    vfx:
+      prefab: {fileID: 6689307985926718574, guid: ca58b3c4bf8304440a7ab62986fce7ef,
+        type: 3}
+      timing: 1
+      anchor:
+        type: 5
+        attachPointId: Stomach
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 0
+  - category:
+      tagName: Debuff.Stun
+    vfx:
+      prefab: {fileID: 5663927605720312730, guid: 8dbab8fb0b777164e8f58b48c3ac7efb,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 5
+        attachPointId: Head
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 0
+  - category:
+      tagName: Buff.AttackUp
+    vfx:
+      prefab: {fileID: 2015227166078130037, guid: 8612b29c6b4e23c4a9a6f4053f9a155b,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 1
+        attachPointId: Head
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 1.1
+  - category:
+      tagName: Buff.DefenseUp
+    vfx:
+      prefab: {fileID: 2015227166078130037, guid: 8612b29c6b4e23c4a9a6f4053f9a155b,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 1
+        attachPointId: Head
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 1.1
+  - category:
+      tagName: Buff.AgilityUp
+    vfx:
+      prefab: {fileID: 2015227166078130037, guid: 8612b29c6b4e23c4a9a6f4053f9a155b,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 1
+        attachPointId: Head
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 1.1
+  - category:
+      tagName: Debuff.Vulnerable
+    vfx:
+      prefab: {fileID: 5346253966740756259, guid: 922870f9504e6b0438e21b87a73fe631,
+        type: 3}
+      timing: 1
+      anchor:
+        type: 1
+        attachPointId: Head
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 1.1

@@ -21,6 +21,7 @@ MonoBehaviour:
   areaRadius: 121
   areaRadiusMeters: 126.7
   areaWidthMeters: 2
+  sectorHalfAngleDegrees: 45
   requiredTags:
   - tagName: Job.Priest
   blockTags: []
@@ -39,10 +40,13 @@ MonoBehaviour:
         description: "\u884C\u52A8\u63D0\u524D100%"
         phase: 1
         targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
         chance: 1
-        advancePercent: 1
+        requiredCasterTags: []
+        blockCasterTags: []
         targetVfx:
-          prefab: {fileID: 1371584380506648, guid: 13bf577ec3321a741a0ca5ccdee3e9b1,
+          prefab: {fileID: 4040964385477513619, guid: 106e80406f0206648b7ccaf2a3d6d010,
             type: 3}
           timing: 1
           anchor:
@@ -52,3 +56,4 @@ MonoBehaviour:
           attachMode: 1
           rotationMode: 0
           autoDestroySeconds: 1
+        advancePercent: 1
