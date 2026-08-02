@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9f1df5b9c51c11744905016b27aefef2, type: 3}
   m_Name: Roland
   m_EditorClassIdentifier: 
-  name: "\u7F57\u5170"
+  characterName: "\u7F57\u5170"
+  portrait: {fileID: 0}
   description: "\u65AF\u975E\u5C3C\u4E9A\u738B\u65CF\u7684\u4E03\u516C\u4E3B\uFF0C\u62E5\u6709\u6700\u7EAF\u6B63\u7684\u738B\u65CF\u8840\u8109\uFF0C\u56E0\u538C\u6076\u738B\u65CF\u7684\u4F5C\u98CE\u800C\u6700\u540E\u52A0\u5165\u4E86\u5DE1\u793C\u8005\u5C0F\u961F"
   job:
     tagName: Job.Paladin
@@ -107,5 +108,8 @@ MonoBehaviour:
       rotationMode: 3
       autoDestroySeconds: 2
   innateAbilities: []
+  characterTag:
+    tagName: 
   inspirationAbility: {fileID: 11400000, guid: 5e5d126c97d61c541ab7c39a21cac7f2, type: 2}
   inspirationTask: {fileID: 11400000, guid: 3f258dc00efff9f4aa11064c1e6f186b, type: 2}
+  moonSoulConfig: {fileID: 0}

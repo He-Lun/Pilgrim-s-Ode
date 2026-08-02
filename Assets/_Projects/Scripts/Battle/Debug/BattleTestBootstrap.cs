@@ -24,7 +24,6 @@ public class BattleTestBootstrap : MonoBehaviour
     [SerializeField] private KeyCode restartKey = KeyCode.R;
 
     [Header("调试")]
-    [SerializeField] private bool showDebugHud = true;
     [SerializeField] private bool snapActorsToNavMeshOnStart = true;
     [Header("表现")]
     [Tooltip("角色 Buff + 屏障/领域世界特效，共用同一 Catalog")]
@@ -95,7 +94,34 @@ public class BattleTestBootstrap : MonoBehaviour
         turnManager.StartBattle(roster, firstTeamId, firstPlayerAP, secondPlayerAP);
         battleStarted = true;
 
-        Debug.Log($"[BattleTestBootstrap] 战斗开始，{roster.Count} 名角色。左键点地移动，{endTurnKey} 结束回合，{restartKey} 重开。");
+        EnsureBattleCamera(roster);
+        StartCoroutine(EnsureBattleUiNextFrames());
+
+        Debug.Log($"[BattleTestBootstrap] 战斗开始，{roster.Count} 名角色。左键点地移动，{endTurnKey} 结束回合，{restartKey} 重开。滚轮缩放，右键平移，中键旋转视角。");
+    }
+
+    private System.Collections.IEnumerator EnsureBattleUiNextFrames()
+    {
+        yield return null;
+        yield return null;
+        BattleHealthBarBootstrap.EnsureAndSync();
+    }
+
+    private static void EnsureBattleCamera(List<AbilitySystemComponent> roster)
+    {
+        if (BattleCameraController.Instance == null)
+        {
+            var go = new GameObject("BattleCameraRig");
+            go.AddComponent<BattleCameraController>();
+            go.AddComponent<BattleCameraInput>();
+            go.AddComponent<BattleCameraImpulsePlayer>();
+        }
+        else if (BattleCameraController.Instance.GetComponent<BattleCameraImpulsePlayer>() == null)
+        {
+            BattleCameraController.Instance.gameObject.AddComponent<BattleCameraImpulsePlayer>();
+        }
+
+        BattleCameraController.Instance?.FocusOnActors(roster);
     }
 
     private bool EnsureBattleSystems()
@@ -277,64 +303,6 @@ public class BattleTestBootstrap : MonoBehaviour
     private void HandleBattleEnded(int winnerTeamId)
     {
         Debug.Log($"[BattleTestBootstrap] 战斗结束，获胜阵营: {winnerTeamId}");
-    }
-
-    void OnGUI()
-    {
-        if (!showDebugHud) return;
-
-        const int width = 360;
-        var rect = new Rect(12f, 12f, width, 220f);
-        GUI.Box(rect, "Battle Test (临时)");
-
-        GUILayout.BeginArea(new Rect(rect.x + 10f, rect.y + 24f, width - 20f, rect.height - 34f));
-
-        if (!battleStarted || TurnManager.Instance == null)
-        {
-            GUILayout.Label("等待开战…");
-            if (GUILayout.Button("开始战斗"))
-                BeginTestBattle();
-            GUILayout.EndArea();
-            return;
-        }
-
-        var tm = TurnManager.Instance;
-        var actor = tm.CurrentActor;
-
-        GUILayout.Label($"阶段: {tm.Phase}");
-        GUILayout.Label($"当前角色: {(actor != null ? actor.name : "—")}");
-
-        if (tm.Phase == TurnPhase.BattleEnd)
-            GUILayout.Label("战斗已结束。按 R 或下方按钮重开。");
-
-        if (tm.Phase != TurnPhase.TurnAction)
-            GUILayout.Label("（仅 TurnAction 阶段可结束回合）");
-
-        if (actor != null)
-        {
-            var movement = actor.GetComponent<CharacterMovementController>();
-            GUILayout.Label($"阵营 {actor.TeamId} AP: {actor.TeamResource?.CurrentActionPoints ?? 0}");
-            GUILayout.Label($"剩余移动力: {movement?.RemainingMoveMeters ?? 0f:F1} m");
-            GUILayout.Label($"移动中: {(movement != null && movement.IsMoving ? "是" : "否")}");
-        }
-
-        if (ActionQueue.Instance != null)
-        {
-            var next = ActionQueue.Instance.PeekNext();
-            if (next.kind == NextKind.Turn && next.actor != null)
-                GUILayout.Label($"行动条下一动: {next.actor.name}");
-        }
-
-        GUILayout.Space(6f);
-        GUILayout.Label($"左键点地移动 | {endTurnKey} 结束回合 | {restartKey} 重开");
-
-        if (GUILayout.Button("结束当前回合"))
-            TryEndTurn();
-
-        if (tm.Phase == TurnPhase.BattleEnd && GUILayout.Button("重新开始战斗"))
-            BeginTestBattle();
-
-        GUILayout.EndArea();
     }
 
     void OnDestroy()

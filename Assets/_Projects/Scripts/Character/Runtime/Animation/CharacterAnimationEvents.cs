@@ -5,6 +5,7 @@ using UnityEngine;
 ///   攻击 — OnAbilityHit~OnAbilityHit4（或 OnHit~OnHit4）
 ///         / OnAbilityCastVfx~OnAbilityCastVfx3（或 OnCastVfx…）
 ///         / OnAbilityComplete
+///         / OnExit（允许其他角色行动；与 OnAbilityComplete 同帧，引导技仅 OnExit）
 ///   突进 — OnDashChargeStart（蓄力结束、开始位移）/ OnAbilityComplete（收招）
 ///   受击 — OnHitComplete
 /// 表现过渡由各 Controller 状态连线负责；OnHitComplete 同时驱动逻辑 FSM 与 HitRecover。
@@ -31,6 +32,9 @@ public class CharacterAnimationEvents : MonoBehaviour
     public void OnHit4() => OnAbilityHit4();
 
     public void OnAbilityComplete() => motor?.OnAbilityCompleteEvent();
+
+    /// <summary>技能对其他人“占回合”结束 — 引导技可仅配置此项以在起手后放行其他角色。</summary>
+    public void OnExit() => motor?.OnAbilityExitEvent();
 
     /// <summary>突进蓄力结束 — 从此刻起 DashChargeState 才开始向前位移。</summary>
     public void OnDashChargeStart() => motor?.OnDashChargeStartEvent();

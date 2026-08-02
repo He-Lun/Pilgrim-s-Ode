@@ -217,6 +217,8 @@ MonoBehaviour:
     transform: {fileID: 2342587026635377559}
   - id: WeaponTip
     transform: {fileID: 3830819400917559738}
+  - id: HeadForHp
+    transform: {fileID: 910301987711615229}
 --- !u!136 &7863786523584631473
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -240,6 +242,37 @@ CapsuleCollider:
   m_Height: 1.6449835
   m_Direction: 1
   m_Center: {x: 0, y: 1.0354034, z: 0}
+--- !u!1 &2623479507545532149
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 910301987711615229}
+  m_Layer: 0
+  m_Name: HeadForHp
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &910301987711615229
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2623479507545532149}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.5684381, y: 0.42056817, z: 0.56843776, w: -0.4205699}
+  m_LocalPosition: {x: 0.000014160061, y: 1.762, z: -0.021948364}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2407068712054877309}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &3313986200137350327
 GameObject:
   m_ObjectHideFlags: 0
@@ -403,6 +436,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 2342587026635377559}
+    - targetCorrespondingSourceObject: {fileID: 3444435157146005869, guid: 9677d696ba1aa214ebf07fcc2debaa85,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 910301987711615229}
     - targetCorrespondingSourceObject: {fileID: 3444435157146005869, guid: 9677d696ba1aa214ebf07fcc2debaa85,
         type: 3}
       insertIndex: -1

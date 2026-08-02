@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// 战斗输入模式（Move 已实现，其余供 HandCardManager 复用）。
@@ -35,6 +37,8 @@ public class BattleInputController : MonoBehaviour
     private MeshRenderer rangeMeshRenderer;
     private CharacterMovementController cachedMovement;
     private MovePlan cachedPreview;
+    private AbilityAreaPreview abilityAreaPreview;
+    private GameplayAbility armedAbility;
 
     public BattleInputMode Mode
     {
@@ -42,40 +46,64 @@ public class BattleInputController : MonoBehaviour
         set => mode = value;
     }
 
+    public bool IsAbilityTargeting => armedAbility != null;
+    public GameplayAbility ArmedAbility => armedAbility;
+
+    public void ArmAbilityTargeting(GameplayAbility ability)
+    {
+        armedAbility = ability;
+        mode = ability != null ? BattleInputMode.TargetCell : BattleInputMode.Move;
+        if (ability == null)
+            abilityAreaPreview?.Hide();
+    }
+
+    public void DisarmAbilityTargeting()
+    {
+        ArmAbilityTargeting(null);
+    }
+
+    public IReadOnlyList<AbilitySystemComponent> GetAbilityPreviewTargets(AbilitySystemComponent caster)
+    {
+        if (armedAbility == null || caster == null || abilityAreaPreview == null)
+            return System.Array.Empty<AbilitySystemComponent>();
+
+        abilityAreaPreview.Refresh(caster, armedAbility, battleCamera);
+        return abilityAreaPreview.PreviewTargets;
+    }
+
     void Awake()
     {
         if (battleCamera == null)
-            battleCamera = Camera.main;
+            battleCamera = BattleCameraController.Instance?.ActiveCamera ?? Camera.main;
 
         EnsureVisuals();
+        abilityAreaPreview = GetComponent<AbilityAreaPreview>()
+            ?? gameObject.AddComponent<AbilityAreaPreview>();
+    }
+
+    void Start()
+    {
+        if (battleCamera == null)
+            battleCamera = BattleCameraController.Instance?.ActiveCamera ?? Camera.main;
     }
 
     void Update()
     {
         RefreshVisuals();
 
+        if (ShouldBlockWorldInput())
+            return;
+
         if (!Input.GetMouseButtonDown(0)) return;
         if (TurnManager.Instance == null) return;
         if (TurnManager.Instance.Phase != TurnPhase.TurnAction) return;
 
         var actor = TurnManager.Instance.CurrentActor;
-        if (actor == null) return;
+        if (actor == null || armedAbility != null) return;
+        if (TurnManager.Instance.IsAnyonePresentingAbilityExcept(actor)) return;
 
         if (mode == BattleInputMode.Move)
             HandleMoveInput(actor);
-    }
-
-    private void HandleMoveInput(AbilitySystemComponent actor)
-    {
-        // 点地取消引导：放在所有 early-return 之前
-        if (actor.IsChanneling)
-            actor.InterruptRitualIfAny();
-
-        var movement = actor.GetComponent<CharacterMovementController>();
-        if (movement == null || movement.IsMoving) return;
-        if (!TryRaycastGround(out Vector3 hitPoint)) return;
-
-        movement.TryMoveToWorldPoint(hitPoint);
     }
 
     private void RefreshVisuals()
@@ -83,26 +111,51 @@ public class BattleInputController : MonoBehaviour
         cachedMovement = null;
 
         if (TurnManager.Instance == null
-            || TurnManager.Instance.Phase != TurnPhase.TurnAction
-            || mode != BattleInputMode.Move)
+            || TurnManager.Instance.Phase != TurnPhase.TurnAction)
         {
-            SetRangeVisible(false);
+            SetMoveRangeVisible(false);
             SetPreviewVisible(false);
+            abilityAreaPreview?.Hide();
             return;
         }
 
         var actor = TurnManager.Instance.CurrentActor;
         if (actor == null)
         {
-            SetRangeVisible(false);
+            SetMoveRangeVisible(false);
             SetPreviewVisible(false);
+            abilityAreaPreview?.Hide();
+            return;
+        }
+
+        if (TurnManager.Instance.IsAnyonePresentingAbilityExcept(actor))
+        {
+            SetMoveRangeVisible(false);
+            SetPreviewVisible(false);
+            abilityAreaPreview?.Hide();
+            return;
+        }
+
+        if (armedAbility != null)
+        {
+            SetMoveRangeVisible(false);
+            SetPreviewVisible(false);
+            abilityAreaPreview?.Refresh(actor, armedAbility, battleCamera);
+            return;
+        }
+
+        if (mode != BattleInputMode.Move)
+        {
+            SetMoveRangeVisible(false);
+            SetPreviewVisible(false);
+            abilityAreaPreview?.Hide();
             return;
         }
 
         cachedMovement = actor.GetComponent<CharacterMovementController>();
         if (cachedMovement == null)
         {
-            SetRangeVisible(false);
+            SetMoveRangeVisible(false);
             SetPreviewVisible(false);
             return;
         }
@@ -115,24 +168,36 @@ public class BattleInputController : MonoBehaviour
             SetPreviewVisible(false);
     }
 
+    private void HandleMoveInput(AbilitySystemComponent actor)
+    {
+        if (actor.IsChanneling)
+            actor.InterruptRitualIfAny();
+
+        var movement = actor.GetComponent<CharacterMovementController>();
+        if (movement == null || movement.IsMoving) return;
+        if (!TryRaycastGround(out Vector3 hitPoint)) return;
+
+        movement.TryMoveToWorldPoint(hitPoint);
+    }
+
     private void UpdateRangeFloodFill(CharacterMovementController movement)
     {
         if (!showMoveRange || rangeMeshFilter == null)
         {
-            SetRangeVisible(false);
+            SetMoveRangeVisible(false);
             return;
         }
 
         if (movement.RemainingMoveMeters <= 0.01f)
         {
-            SetRangeVisible(false);
+            SetMoveRangeVisible(false);
             return;
         }
 
         float cellSize = BattleSpaceSettings.GetFloodFillCellSize();
         var reachable = movement.GetReachablePoints();
         rangeMeshFilter.mesh = MoveRangeMeshBuilder.Build(reachable, cellSize);
-        SetRangeVisible(reachable != null && reachable.Count > 0);
+        SetMoveRangeVisible(reachable != null && reachable.Count > 0);
     }
 
     private void UpdatePreviewPath(CharacterMovementController movement, Vector3 hitPoint)
@@ -208,22 +273,16 @@ public class BattleInputController : MonoBehaviour
 
     private static Material CreateTransparentMaterial(Color color)
     {
-        var shader = Shader.Find("Universal Render Pipeline/Unlit")
-                     ?? Shader.Find("Unlit/Color")
-                     ?? Shader.Find("Sprites/Default");
+        var shader = Shader.Find("Sprites/Default")
+                     ?? Shader.Find("Universal Render Pipeline/Unlit")
+                     ?? Shader.Find("Unlit/Color");
         var mat = new Material(shader);
         mat.color = color;
-
-        if (mat.HasProperty("_Surface"))
-            mat.SetFloat("_Surface", 1f);
-        if (mat.HasProperty("_Blend"))
-            mat.SetFloat("_Blend", 0f);
-
         mat.renderQueue = 3000;
         return mat;
     }
 
-    private void SetRangeVisible(bool visible)
+    private void SetMoveRangeVisible(bool visible)
     {
         if (rangeMeshRenderer != null)
             rangeMeshRenderer.enabled = visible;
@@ -245,5 +304,10 @@ public class BattleInputController : MonoBehaviour
 
         hitPoint = BattleTargeting.ProjectToGround(hit.point);
         return true;
+    }
+
+    private static bool ShouldBlockWorldInput()
+    {
+        return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
     }
 }

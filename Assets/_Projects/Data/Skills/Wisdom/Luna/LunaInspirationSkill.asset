@@ -18,9 +18,9 @@ MonoBehaviour:
   actionPointCost: 10
   isInstant: 1
   targetScope: 5
-  areaRadius: 1
-  areaRadiusMeters: 16
-  areaWidthMeters: 2
+  areaRadius: 0
+  areaRadiusMeters: 10
+  areaWidthMeters: 0
   sectorHalfAngleDegrees: 45
   requiredTags:
   - tagName: Job.Wisdom
@@ -62,7 +62,7 @@ MonoBehaviour:
     - rid: 3699152700000000702
       type: {class: MoonSoulScaledDamageEffect, ns: , asm: Assembly-CSharp}
       data:
-        description: "\u8303\u56F4\u5185\u654C\u4EBA\u53D7\u5230\u57FA\u7840200%+150%/\u5C42\u6708\u9B42\u7684\u6CD5\u672F\u4F24\u5BB3"
+        description: "\u8303\u56F4\u5185\u654C\u4EBA\u53D7\u5230\u57FA\u7840200%+200%/\u5C42\u6708\u9B42\u7684\u6CD5\u672F\u4F24\u5BB3"
         phase: 1
         targetSelection: 0
         targetScope: 0
@@ -82,6 +82,6 @@ MonoBehaviour:
           rotationMode: 0
           autoDestroySeconds: 0
         baseScaler: 2
-        bonusPerStack: 1.5
+        bonusPerStack: 2
         damageType:
           tagName: DamageType.AP

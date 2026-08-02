@@ -173,6 +173,51 @@ public abstract class GameplayAbility : ScriptableObject
         return TryActivateAsInspiration(owner, AbilityActivationContext.FromTargets(targets));
     }
 
+    /// <summary>
+    /// 插入行动（追加攻击等）：不耗 AP，走动画相位；Immediate 即时，OnHit 等由动画事件驱动。
+    /// </summary>
+    public virtual AbilityActivationResult TryActivateAsInsert(AbilitySystemComponent owner, AbilityActivationContext context)
+    {
+        foreach (var tag in blockTags)
+        {
+            if (owner.HasTag(tag))
+                return AbilityActivationResult.HasBlockTags;
+        }
+
+        foreach (var tag in requiredTags)
+        {
+            if (!owner.HasTag(tag))
+                return AbilityActivationResult.MissingRequiredTags;
+        }
+
+        var contextResult = ValidateContext(owner, context);
+        if (contextResult != AbilityActivationResult.Success)
+            return contextResult;
+
+        ExecuteEffectsByPhase(owner, context, AbilityEffectPhase.Immediate);
+        owner.BeginAbilityActivation(this, context);
+        NotifyAbilityUsed(owner, context);
+        return AbilityActivationResult.Success;
+    }
+
+    public virtual AbilityActivationResult TryActivateAsInsert(AbilitySystemComponent owner, List<AbilitySystemComponent> targets)
+    {
+        return TryActivateAsInsert(owner, AbilityActivationContext.FromTargets(targets));
+    }
+
+    /// <summary>开战被动注册：仅执行 Immediate 效果，不广播 AbilityUsed、不进入技能表现。</summary>
+    public virtual AbilityActivationResult TryActivatePassiveSetup(AbilitySystemComponent owner)
+    {
+        foreach (var tag in blockTags)
+        {
+            if (owner.HasTag(tag))
+                return AbilityActivationResult.HasBlockTags;
+        }
+
+        ExecuteEffectsByPhase(owner, AbilityActivationContext.Self(), AbilityEffectPhase.Immediate);
+        return AbilityActivationResult.Success;
+    }
+
     protected virtual AbilityActivationResult ValidateContext(AbilitySystemComponent owner, AbilityActivationContext context)
     {
         switch (GetEffectiveTargetScope(owner))

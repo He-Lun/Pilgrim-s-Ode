@@ -27,5 +27,5 @@ MonoBehaviour:
       type: {class: ReachMoonSoulStacksObjective, ns: , asm: Assembly-CSharp}
       data:
         displayName: "\u6708\u9B42\u8FBE\u52308\u5C42"
-        targetCount: 1
+        targetCount: 8
         requiredStacks: 8

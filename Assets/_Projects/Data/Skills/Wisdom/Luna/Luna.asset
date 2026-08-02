@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9f1df5b9c51c11744905016b27aefef2, type: 3}
   m_Name: Luna
   m_EditorClassIdentifier: 
-  name: "\u9732\u5A1C"
+  characterName: "\u9732\u5A1C"
+  portrait: {fileID: 0}
   description: "\u6B27\u68EE\u5C3C\u4E9A\u6708\u795E\u6D3E\u7CFB\u7684\u738B\u65CF\u4E3A\u4E86\u906E\u63A9\u514B\u9686\u5B9E\u9A8C\u7684\u5931\u8D25\uFF0C\u4E0D\u5F97\u4E0D\u9500\u6BC1\u5B9E\u9A8C\u7684\u4EA7\u7269\uFF0C\u800C\u9732\u5A1C\uFF08\u542F\u661F001\uFF09\u5C31\u662F\u5176\u4E2D\u4E4B\u4E00\u3002\u4E3A\u4E86\u8FFD\u6EAF\u81EA\u5DF1\u7684\u672C\u6E90\uFF0C\u9732\u5A1C\u8E0F\u4E0A\u4E86\u5DE1\u793C\u7684\u65C5\u9014\u3002"
   job:
     tagName: Job.Wisdom
@@ -176,7 +177,8 @@ MonoBehaviour:
       attachMode: 0
       rotationMode: 0
       autoDestroySeconds: 0
-  innateAbilities: []
+  innateAbilities:
+  - {fileID: 11400000, guid: 8f3a2b1c4d5e6f708192a3b4c5d6e7f8, type: 2}
   characterTag:
     tagName: Character.Luna
   inspirationAbility: {fileID: 11400000, guid: 7f8e9d0c1b2a39485766758493a2b1c0, type: 2}

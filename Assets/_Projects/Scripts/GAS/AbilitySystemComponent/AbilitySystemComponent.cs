@@ -13,6 +13,7 @@ using UnityEngine;
         private InspirationTaskTracker inspirationTracker = new InspirationTaskTracker();
         private RitualChannelTracker ritualTracker = new RitualChannelTracker();
         private MoonSoulTracker moonSoulTracker = new MoonSoulTracker();
+        private SacredBonePassiveTracker sacredBoneTracker = new SacredBonePassiveTracker();
 
         [Header("========== 角色配置 ==========")]
         [SerializeField] private CharacterDataSO characterData;
@@ -29,6 +30,7 @@ using UnityEngine;
         private bool pendingHit3Resolved;
         private bool pendingHit4Resolved;
         private bool pendingCompleteResolved;
+        private bool abilityBlocksTurnHandoff;
 
         [Header("========== 阵营 ==========")]
         [SerializeField] private int teamId;
@@ -48,10 +50,13 @@ using UnityEngine;
         public InspirationTaskTracker InspirationTracker => inspirationTracker;
         public RitualChannelTracker RitualTracker => ritualTracker;
         public MoonSoulTracker MoonSoul => moonSoulTracker;
+        public SacredBonePassiveTracker SacredBone => sacredBoneTracker;
         public bool IsChanneling => ritualTracker.IsActive;
         public bool HasMoonSoul => moonSoulTracker != null && moonSoulTracker.IsBound;
 
         public bool HasPendingAbility => pendingAbility != null;
+        /// <summary>技能尚未触发 OnExit，其他角色须等待（与 HasPendingAbility 独立，引导技可在 OnExit 后继续引导）。</summary>
+        public bool AbilityBlocksTurnHandoff => abilityBlocksTurnHandoff;
 
         /// <summary>主动/被动打断祈福引导。</summary>
         public void InterruptRitualIfAny()
@@ -62,6 +67,7 @@ using UnityEngine;
 
         // ---------- 事件 ----------
         public Action<GameplayAbility, List<AbilitySystemComponent>> OnAbilityUsed;
+        public Action<GameplayAbility> OnAbilityActivationEnded;
         public Action<GameplayTag> OnTagAdded;
         public Action<GameplayTag> OnTagRemoved;
         public Action<AbilitySystemComponent> OnDeath;
@@ -82,6 +88,7 @@ using UnityEngine;
             inspirationTracker.Dispose();
             ritualTracker.Dispose();
             moonSoulTracker.Dispose();
+            sacredBoneTracker.Dispose();
             if (attributes != null)
                 attributes.OnModifierRemoved -= HandleModifierRemoved;
         }
@@ -111,8 +118,8 @@ using UnityEngine;
         /// <summary>信息面板显示名：角色数据 → 召唤物组件 → 物体名。</summary>
         public string GetDisplayName()
         {
-            if (characterData != null && !string.IsNullOrEmpty(characterData.name))
-                return characterData.name;
+            if (characterData != null && !string.IsNullOrEmpty(characterData.DisplayName))
+                return characterData.DisplayName;
 
             var prop = GetComponent<DestructibleBattleProp>();
             if (prop != null && !string.IsNullOrEmpty(prop.DisplayName))
@@ -195,6 +202,13 @@ using UnityEngine;
             pendingHit3Resolved = false;
             pendingHit4Resolved = false;
             pendingCompleteResolved = false;
+            abilityBlocksTurnHandoff = true;
+        }
+
+        /// <summary>动画事件 OnExit — 允许其他角色继续行动；不结束技能 pending 与引导。</summary>
+        public void MarkAbilityExit()
+        {
+            abilityBlocksTurnHandoff = false;
         }
 
         public void ResolvePendingAbilityPhase(AbilityEffectPhase phase)
@@ -230,12 +244,17 @@ using UnityEngine;
 
         public void ClearPendingAbility()
         {
+            var ended = pendingAbility;
             pendingAbility = null;
             pendingHitResolved = false;
             pendingHit2Resolved = false;
             pendingHit3Resolved = false;
             pendingHit4Resolved = false;
             pendingCompleteResolved = false;
+            abilityBlocksTurnHandoff = false;
+
+            if (ended != null)
+                OnAbilityActivationEnded?.Invoke(ended);
         }
 
         public bool HasEnoughActionPoints(int cost)
@@ -254,8 +273,7 @@ using UnityEngine;
             foreach (var passive in passiveAbilities)
             {
                 if (passive == null) continue;
-                var dummy = new List<AbilitySystemComponent> { this };
-                passive.TryActivateAsInspiration(this, dummy);
+                passive.TryActivatePassiveSetup(this);
             }
         }
 
@@ -420,6 +438,7 @@ using UnityEngine;
             InterruptRitualIfAny();
             ClearPendingAbility();
             moonSoulTracker.Dispose();
+            sacredBoneTracker.Dispose();
 
             // 先清修改器再清 tag，避免残留 Buff/眩晕等状态
             attributes?.RemoveAllModifiers();

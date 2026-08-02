@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9f1df5b9c51c11744905016b27aefef2, type: 3}
   m_Name: Mongo
   m_EditorClassIdentifier: 
-  name: "\u8499\u6208"
+  characterName: "\u8499\u6208"
   description: "\u6765\u81EA\u65AF\u975E\u5C3C\u4E9A\u7684\u6218\u4E89\u5974\u96B6\uFF0C\u4ECE\u5C0F\u5C31\u4F5C\u4E3A\u738B\u65CF\u7684\u6218\u4E89\u5DE5\u5177\u88AB\u57F9\u517B\u957F\u5927\uFF0C\u4E3A\u4E86\u4FDD\u62A4\u7F57\u5170\u800C\u4E0E\u5176\u8E0F\u4E0A\u5DE1\u793C\u7684\u65C5\u9014"
   job:
     tagName: Job.Berserker

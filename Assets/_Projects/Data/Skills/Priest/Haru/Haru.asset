@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9f1df5b9c51c11744905016b27aefef2, type: 3}
   m_Name: Haru
   m_EditorClassIdentifier: 
-  name: "\u693F"
+  characterName: "\u693F"
+  portrait: {fileID: 0}
   description: "\u6765\u81EA\u4F0A\u95E8\u7684\u5DEB\u5973"
   job:
     tagName: Job.Priest
@@ -68,5 +69,8 @@ MonoBehaviour:
       rotationMode: 3
       autoDestroySeconds: 1
   innateAbilities: []
+  characterTag:
+    tagName: 
   inspirationAbility: {fileID: 11400000, guid: 6fe6fc68e8bbdec4ba5463ca52ca8325, type: 2}
   inspirationTask: {fileID: 11400000, guid: 2c018e079ef211e4a811fda6d69b0b8e, type: 2}
+  moonSoulConfig: {fileID: 0}

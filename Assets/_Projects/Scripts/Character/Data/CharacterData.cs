@@ -1,12 +1,18 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [CreateAssetMenu(fileName = "NewCharacter", menuName = "巡礼之诗/角色数据")]
 public class CharacterDataSO : ScriptableObject
 {
     [Header("========== 基本信息 ==========")]
     [Header("名字")]
-    [SerializeField] public new string name;
+    [FormerlySerializedAs("name")]
+    [SerializeField] private string characterName;
+
+    public string DisplayName => characterName;
+    [Header("角色头像")]
+    [SerializeField] public Sprite portrait;
     [Header("角色介绍")]
     [SerializeField] public string description = "这是一个角色";
     [Header("职业")]

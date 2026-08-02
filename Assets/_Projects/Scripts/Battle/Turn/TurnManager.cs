@@ -36,6 +36,7 @@ public class TurnManager : MonoBehaviour
 
     public TurnPhase Phase { get; private set; }
     public AbilitySystemComponent CurrentActor { get; private set; }
+    public IReadOnlyList<AbilitySystemComponent> AllActors => allActors;
 
     // ---------- 事件 ----------
     public System.Action<TurnPhase> OnPhaseChanged;
@@ -122,6 +123,7 @@ public class TurnManager : MonoBehaviour
     public void EndCurrentTurn()
     {
         if (!battleActive || Phase != TurnPhase.TurnAction) return;
+        if (IsAnyonePresentingAbilityExcept(CurrentActor)) return;
         EnterTurnSettle();
     }
 
@@ -131,7 +133,28 @@ public class TurnManager : MonoBehaviour
     public void NotifyActionResolved()
     {
         if (!battleActive) return;
+
+        actionQueue?.TryCompleteActiveConfirmInsert();
+
+        if (actionQueue != null && actionQueue.CanFlushStagingOnActionResolved)
+            actionQueue.FlushStagingToFront();
+
         DrainInserts();
+    }
+
+    /// <summary>除 except 外，是否仍有角色尚未触发 OnExit（其他角色须等待）。</summary>
+    public bool IsAnyonePresentingAbilityExcept(AbilitySystemComponent except)
+    {
+        if (!battleActive) return false;
+
+        for (int i = 0; i < allActors.Count; i++)
+        {
+            var actor = allActors[i];
+            if (actor == null || actor == except) continue;
+            if (actor.AbilityBlocksTurnHandoff) return true;
+        }
+
+        return false;
     }
 
     // ==================================================================
@@ -160,14 +183,42 @@ public class TurnManager : MonoBehaviour
     //  插入行动对外入口（追击/反击等可用）
     // ==================================================================
 
-    public void PushInsert(PendingAction action)
+    public void PushInsert(PendingAction action, bool deferUntilTurnEnd = false)
     {
-        actionQueue?.PushInsert(action);
+        if (actionQueue == null)
+            return;
+
+        if (Phase == TurnPhase.TurnAction && CurrentActor != null)
+            actionQueue.StageInsert(action, deferUntilTurnEnd);
+        else
+            actionQueue.EnqueueInsertFront(action);
     }
 
-    public void PushInsertBatch(List<PendingAction> batch)
+    public void PushInsertBatch(List<PendingAction> batch, bool deferUntilTurnEnd = false)
     {
-        actionQueue?.PushInsertBatch(batch);
+        if (actionQueue == null || batch == null || batch.Count == 0)
+            return;
+
+        if (Phase == TurnPhase.TurnAction && CurrentActor != null)
+        {
+            var ordered = new List<PendingAction>(batch);
+            ordered.Sort(CompareInsertBatch);
+            for (int i = 0; i < ordered.Count; i++)
+                actionQueue.StageInsert(ordered[i], deferUntilTurnEnd);
+            return;
+        }
+
+        actionQueue.EnqueueInsertFrontBatch(batch);
+    }
+
+    private static int CompareInsertBatch(PendingAction a, PendingAction b)
+    {
+        int byPriority = ((int)b.priority).CompareTo((int)a.priority);
+        if (byPriority != 0) return byPriority;
+
+        float agiA = a.actor != null && a.actor.Attributes != null ? a.actor.Attributes.Agility : 0f;
+        float agiB = b.actor != null && b.actor.Attributes != null ? b.actor.Attributes.Agility : 0f;
+        return agiB.CompareTo(agiA);
     }
 
     // ==================================================================
@@ -207,6 +258,7 @@ public class TurnManager : MonoBehaviour
     private void EnterTurnStart(AbilitySystemComponent actor)
     {
         CurrentActor = actor;
+        actionQueue?.EnqueueTurnBack(actor);
         SetPhase(TurnPhase.TurnStart);
 
         // 眩晕：跳过本回合行动，直接结算（Tick 状态持续）
@@ -238,7 +290,8 @@ public class TurnManager : MonoBehaviour
         var actor = CurrentActor;
         SetPhase(TurnPhase.TurnSettle);
 
-        // 结束前先把残留插入行动排空
+        actionQueue?.PopTurnToken(actor);
+        actionQueue?.FlushStagingToFront();
         DrainInserts();
 
         // Buff 按“该角色回合”结算；有祈福护佑则冻结增益持续
@@ -289,15 +342,25 @@ public class TurnManager : MonoBehaviour
         if (actionQueue == null) return;
 
         int guard = 0;
-        const int maxIter = 256; // 防连锁死循环
-        while (actionQueue.HasInsert && guard++ < maxIter)
+        const int maxIter = 256;
+        while (actionQueue.TryPopFrontInsert(out var pending) && guard++ < maxIter)
         {
-            var pending = actionQueue.PopInsert();
-            if (pending.actor == null || pending.ability == null) continue;
+            if (pending.actor == null || pending.ability == null)
+                continue;
 
-            // 作为“行动”结算：绕过行动点，执行效果并广播 AbilityUsed；
-            // 期间新触发的插入（如连锁死亡）会压到栈顶，天然深度优先。
-            pending.ability.TryActivateAsInspiration(pending.actor, pending.context);
+            if (pending.priority == InsertPriority.FollowUp)
+            {
+                pending.ability.TryActivateAsInsert(pending.actor, pending.context);
+                if (pending.actor != null && pending.actor.AbilityBlocksTurnHandoff)
+                    break;
+
+                actionQueue.CompleteFrontConfirmInsert();
+            }
+            else
+            {
+                pending.ability.TryActivateAsInspiration(pending.actor, pending.context);
+                actionQueue.CompleteFrontConfirmInsert();
+            }
         }
 
         if (guard >= maxIter)

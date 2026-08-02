@@ -44,7 +44,8 @@ public class CharacterMotor : MonoBehaviour
         && TurnManager.Instance.Phase == TurnPhase.TurnAction
         && TurnManager.Instance.CurrentActor == asc
         && !IsDead
-        && !IsStunned;
+        && !IsStunned
+        && !TurnManager.Instance.IsAnyonePresentingAbilityExcept(asc);
 
     public bool IsStunned =>
         asc != null && asc.HasTag(GameplayTag.Debuff.Stun);
@@ -362,14 +363,46 @@ public class CharacterMotor : MonoBehaviour
         }
     }
 
+    /// <summary>动画事件 OnExit — 解除“其他角色须等待”；引导中仅结束 pending，不收招。</summary>
+    public void OnAbilityExitEvent()
+    {
+        if (asc == null) return;
+
+        bool wasBlocking = asc.AbilityBlocksTurnHandoff;
+        asc.MarkAbilityExit();
+
+        if (asc.IsChanneling && asc.HasPendingAbility)
+            asc.ClearPendingAbility();
+
+        if (wasBlocking)
+            TurnManager.Instance?.NotifyActionResolved();
+    }
+
     /// <summary>动画事件 OnAbilityComplete — Ability 与 DashCharge 共用收招。</summary>
     public void OnAbilityCompleteEvent()
     {
-        if (asc == null || !asc.HasPendingAbility) return;
+        if (asc == null) return;
 
         var state = stateMachine.CurrentType;
         if (state != CharacterStateType.Ability && state != CharacterStateType.DashCharge)
             return;
+
+        bool wasBlocking = asc.AbilityBlocksTurnHandoff;
+        asc.MarkAbilityExit();
+
+        if (!asc.HasPendingAbility)
+        {
+            if (!asc.IsChanneling)
+            {
+                ClearActiveAbilityPresentation();
+                ResetDashChargeMovementGate();
+                ReturnToIdle();
+            }
+
+            if (wasBlocking)
+                TurnManager.Instance?.NotifyActionResolved();
+            return;
+        }
 
         PlayAbilityVfx(VfxTiming.OnComplete);
 
@@ -377,7 +410,12 @@ public class CharacterMotor : MonoBehaviour
         asc.ClearPendingAbility();
         ClearActiveAbilityPresentation();
         ResetDashChargeMovementGate();
-        ReturnToIdle();
+
+        if (!asc.IsChanneling)
+            ReturnToIdle();
+
+        if (wasBlocking)
+            TurnManager.Instance?.NotifyActionResolved();
     }
 
     /// <summary>动画事件 OnDashChargeStart — 蓄力结束，突进位移开始。</summary>
@@ -482,6 +520,7 @@ public class CharacterMotor : MonoBehaviour
     /// <summary>引导被打断后退出技能表现，回到 Idle。</summary>
     public void ReleaseFromChannel()
     {
+        asc?.MarkAbilityExit();
         ClearActiveAbilityPresentation();
         asc?.ClearPendingAbility();
         if (stateMachine.CurrentType == CharacterStateType.Ability)
@@ -519,10 +558,21 @@ public class CharacterMotor : MonoBehaviour
 
     private void ResetDashChargeMovementGate() => dashChargeMovementAuthorized = false;
 
+    private bool IsPassiveAbility(GameplayAbility ability)
+    {
+        if (ability == null || asc?.PassiveAbilities == null)
+            return false;
+
+        return asc.PassiveAbilities.Contains(ability);
+    }
+
     private void HandleCombatEvent(CombatEvent evt)
     {
         if (evt.instigator == asc && evt.type == CombatEventType.AbilityUsed && evt.ability != null)
         {
+            if (IsPassiveAbility(evt.ability))
+                return;
+
             var ctx = evt.abilityContext;
             if (!ctx.HasExplicitTargets && !ctx.HasTargetPoint && !ctx.HasAimDirection && !ctx.HasDirection)
             {

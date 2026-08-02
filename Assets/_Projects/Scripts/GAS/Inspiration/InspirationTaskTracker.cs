@@ -14,6 +14,7 @@ public class InspirationTaskTracker
     private readonly Dictionary<InspirationObjective, int> progress = new Dictionary<InspirationObjective, int>();
     private bool isCompleted;
     private bool isSubscribed;
+    private bool inspirationSpendPending;
 
     public InspirationTaskSO TaskDef => taskDef;
     public bool IsCompleted => isCompleted;
@@ -29,10 +30,12 @@ public class InspirationTaskTracker
         inspirationAbility = ability;
         owner = asc;
         isCompleted = false;
+        inspirationSpendPending = false;
         ResetProgress();
 
         if (taskDef != null)
         {
+            SyncMoonSoulProgress();
             CombatEventBus.Instance.OnEvent += HandleCombatEvent;
             isSubscribed = true;
         }
@@ -56,7 +59,41 @@ public class InspirationTaskTracker
 
     public int GetProgress(InspirationObjective objective)
     {
+        if (objective is ReachMoonSoulStacksObjective moon)
+            return moon.ReadCurrentStacks(owner);
+
         return progress.TryGetValue(objective, out int value) ? value : 0;
+    }
+
+    public float GetProgressRatio()
+    {
+        if (taskDef?.objectives == null || taskDef.objectives.Count == 0)
+            return 0f;
+
+        if (taskDef.requireAllObjectives)
+        {
+            int totalCurrent = 0;
+            int totalTarget = 0;
+            foreach (var obj in taskDef.objectives)
+            {
+                if (obj == null) continue;
+                totalCurrent += GetProgress(obj);
+                totalTarget += obj.GetProgressTarget();
+            }
+
+            return totalTarget > 0 ? Mathf.Clamp01((float)totalCurrent / totalTarget) : 0f;
+        }
+
+        float best = 0f;
+        foreach (var obj in taskDef.objectives)
+        {
+            if (obj == null) continue;
+            int target = obj.GetProgressTarget();
+            if (target <= 0) continue;
+            best = Mathf.Max(best, (float)GetProgress(obj) / target);
+        }
+
+        return Mathf.Clamp01(best);
     }
 
     public void ResetProgress()
@@ -71,9 +108,26 @@ public class InspirationTaskTracker
         }
     }
 
+    private void SyncMoonSoulProgress()
+    {
+        if (owner == null || taskDef?.objectives == null) return;
+
+        foreach (var objective in taskDef.objectives)
+        {
+            if (objective is not ReachMoonSoulStacksObjective moon)
+                continue;
+
+            int current = moon.ReadCurrentStacks(owner);
+            progress[objective] = current;
+        }
+    }
+
     private void HandleCombatEvent(CombatEvent evt)
     {
         if (taskDef == null || owner == null || isCompleted && !taskDef.repeatable)
+            return;
+
+        if (TryConsumeInspirationSpend(evt))
             return;
 
         foreach (var objective in taskDef.objectives)
@@ -82,20 +136,72 @@ public class InspirationTaskTracker
             if (!progress.ContainsKey(objective))
                 progress[objective] = 0;
 
-            if (progress[objective] >= objective.targetCount)
+            if (objective.TryReadAbsoluteProgress(evt, owner, out int absoluteValue, out int absoluteTarget))
+            {
+                if (inspirationSpendPending && absoluteValue > 0)
+                    continue;
+
+                if (absoluteValue == progress[objective])
+                    continue;
+
+                progress[objective] = absoluteValue;
+                if (absoluteValue == 0)
+                    inspirationSpendPending = false;
+
+                OnProgressChanged?.Invoke(objective, absoluteValue, absoluteTarget);
+                continue;
+            }
+
+            if (inspirationSpendPending)
+                continue;
+
+            int target = objective.GetProgressTarget();
+            if (progress[objective] >= target)
                 continue;
 
             if (!objective.MatchesEvent(evt, owner))
                 continue;
 
             int delta = objective.GetProgressDelta(evt, owner);
-            int current = Mathf.Min(progress[objective] + delta, objective.targetCount);
+            if (delta <= 0)
+                continue;
+
+            int current = Mathf.Min(progress[objective] + delta, target);
             progress[objective] = current;
-            OnProgressChanged?.Invoke(objective, current, objective.targetCount);
+            OnProgressChanged?.Invoke(objective, current, target);
         }
+
+        if (inspirationSpendPending)
+            return;
 
         if (IsTaskFulfilled())
             CompleteTask();
+    }
+
+    private bool TryConsumeInspirationSpend(CombatEvent evt)
+    {
+        if (!inspirationSpendPending
+            || evt.type != CombatEventType.AbilityUsed
+            || evt.instigator != owner
+            || inspirationAbility == null
+            || evt.ability != inspirationAbility)
+            return false;
+
+        ResetProgress();
+        inspirationSpendPending = false;
+        NotifyAllProgressChanged();
+        return true;
+    }
+
+    private void NotifyAllProgressChanged()
+    {
+        if (taskDef?.objectives == null) return;
+
+        foreach (var objective in taskDef.objectives)
+        {
+            if (objective == null) continue;
+            OnProgressChanged?.Invoke(objective, GetProgress(objective), objective.GetProgressTarget());
+        }
     }
 
     private bool IsTaskFulfilled()
@@ -108,7 +214,7 @@ public class InspirationTaskTracker
             foreach (var obj in taskDef.objectives)
             {
                 if (obj == null) continue;
-                if (!progress.TryGetValue(obj, out int val) || val < obj.targetCount)
+                if (GetProgress(obj) < obj.GetProgressTarget())
                     return false;
             }
             return true;
@@ -117,9 +223,10 @@ public class InspirationTaskTracker
         foreach (var obj in taskDef.objectives)
         {
             if (obj == null) continue;
-            if (progress.TryGetValue(obj, out int val) && val >= obj.targetCount)
+            if (GetProgress(obj) >= obj.GetProgressTarget())
                 return true;
         }
+
         return false;
     }
 
@@ -129,14 +236,13 @@ public class InspirationTaskTracker
             isCompleted = true;
 
         TurnManager.Instance?.OnInspirationCompleted(owner, inspirationAbility, taskDef);
-
         OnTaskCompleted?.Invoke();
         Debug.Log($"[InspirationTask] {owner.gameObject.name} 完成激励任务: {taskDef.taskName}");
 
         if (taskDef.repeatable)
         {
             isCompleted = false;
-            ResetProgress();
+            inspirationSpendPending = true;
         }
     }
 }

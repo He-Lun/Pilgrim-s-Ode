@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1082965343546289477
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5350665314150269329}
+  m_Layer: 0
+  m_Name: HeadForHp
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5350665314150269329
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1082965343546289477}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.52663594, y: 0.47186235, z: 0.5266358, w: -0.47186366}
+  m_LocalPosition: {x: 0.00047302246, y: 1.807, z: -0.04222107}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1662007633973281911}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &3347119638107265983
 GameObject:
   m_ObjectHideFlags: 0
@@ -144,6 +175,8 @@ MonoBehaviour:
     transform: {fileID: 5522844968400665919}
   - id: WeaponTip
     transform: {fileID: 6290084939332992747}
+  - id: HeadForHp
+    transform: {fileID: 5350665314150269329}
 --- !u!114 &1760840703512501996
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -387,6 +420,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 5522844968400665919}
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 194e8f5ab673e684d9067ed380612922,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5350665314150269329}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 194e8f5ab673e684d9067ed380612922, type: 3}
 --- !u!4 &1662007633973281911 stripped

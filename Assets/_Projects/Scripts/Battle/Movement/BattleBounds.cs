@@ -35,4 +35,7 @@ public class BattleBounds : MonoBehaviour
         if (boundsCollider == null) return true;
         return boundsCollider.bounds.Contains(worldPoint);
     }
+
+    public Bounds WorldBounds =>
+        boundsCollider != null ? boundsCollider.bounds : new Bounds(Vector3.zero, Vector3.one * 1000f);
 }
