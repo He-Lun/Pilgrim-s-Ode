@@ -12,7 +12,7 @@ public class InspirationTaskSO : ScriptableObject
     [TextArea(2, 4)] public string description;
 
     [Header("========== 任务目标 ==========")]
-    [SerializeReference, SubclassSelector] public List<InspirationObjective> objectives = new List<InspirationObjective>();
+    [SerializeReference] public List<InspirationObjective> objectives = new List<InspirationObjective>();
 
     [Tooltip("true=全部目标达成, false=任一目标达成")]
     public bool requireAllObjectives = true;

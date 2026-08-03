@@ -55,8 +55,8 @@ using UnityEngine;
         [SerializeField] private float baseDefense = 5f;
         [Header("基础敏捷值（决定行动频率）")]
         [SerializeField] private float baseAgility = 10f;
-        [Header("速度（每回合移动力点数，×1.5m 即为移动米数，BG3 约 5–8 点）")]
-        [SerializeField] private float baseSpeed = 6f;
+        [Header("速度（每回合移动力）")]
+        [SerializeField] private float baseSpeed = 10f;
 
         [Header("========== 运行时当前值 ==========")]
         [Header("当前生命值")]
@@ -69,12 +69,6 @@ using UnityEngine;
         public Action<float> OnHealthChanged;
         public Action<float> OnActionValueChanged;
         public Action<string, float, float> OnAttributeChanged; // 属性名, 旧值, 新值
-
-        // ---------- 修改器(Buff)生命周期事件 ----------
-        /// <summary>某 sourceTag 的修改器新增（含刷新）时触发。</summary>
-        public Action<GameplayTag> OnModifierAdded;
-        /// <summary>某 sourceTag 的修改器全部移除（过期/被驱散）时触发 —— buff 特效据此销毁。</summary>
-        public Action<GameplayTag> OnModifierRemoved;
 
         // ---------- 属性访问器 ----------
         public float CurrentHealth
@@ -106,33 +100,6 @@ using UnityEngine;
 
             CurrentHealth = baseHealth;
             modifiers.Clear();
-        }
-
-        /// <summary>可摧毁召唤物：仅血量有意义，攻防敏捷为 0。</summary>
-        public void InitializeAsProp(float maxHealth)
-        {
-            baseHealth = Mathf.Max(1f, maxHealth);
-            baseAttack = 0f;
-            baseDefense = 0f;
-            baseAgility = 0f;
-            baseSpeed = 0f;
-            CurrentHealth = baseHealth;
-            modifiers.Clear();
-        }
-
-        /// <summary>脆弱等 Debuff 叠加的受伤倍率（1 = 无加成）。</summary>
-        public float GetDamageTakenMultiplier()
-        {
-            float amp = 0f;
-            for (int i = 0; i < modifiers.Count; i++)
-            {
-                var mod = modifiers[i];
-                if (mod.attributeName != "DamageTaken" || mod.IsExpired()) continue;
-                if (mod.operation == ModifierOperation.Multiplicative)
-                    amp += mod.value;
-            }
-
-            return Mathf.Max(0.1f, 1f + amp);
         }
 
         // ---------- 计算最终属性值 ----------
@@ -170,17 +137,14 @@ using UnityEngine;
                     existing.sourceTag.Matches(modifier.sourceTag))
                 {
                     modifiers[i] = modifier;
-                    OnModifierAdded?.Invoke(modifier.sourceTag);
                     return;
                 }
             }
             modifiers.Add(modifier);
-            OnModifierAdded?.Invoke(modifier.sourceTag);
         }
 
         public void RemoveModifier(GameplayTag sourceTag, string attributeName = null)
         {
-            bool removedAny = false;
             for (int i = modifiers.Count - 1; i >= 0; i--)
             {
                 var mod = modifiers[i];
@@ -189,110 +153,33 @@ using UnityEngine;
                     if (string.IsNullOrEmpty(attributeName) || mod.attributeName == attributeName)
                     {
                         modifiers.RemoveAt(i);
-                        removedAny = true;
                     }
                 }
             }
-
-            if (removedAny && !HasModifierWithTag(sourceTag))
-                OnModifierRemoved?.Invoke(sourceTag);
-        }
-
-        /// <summary>是否仍有该来源标签的活跃(未过期)修改器。</summary>
-        public bool HasModifierWithTag(GameplayTag sourceTag)
-        {
-            foreach (var mod in modifiers)
-            {
-                if (mod.sourceTag.Matches(sourceTag) && !mod.IsExpired())
-                    return true;
-            }
-            return false;
-        }
-
-        /// <summary>是否仍有属于该类别的活跃修改器（用于类别特效停播判断）。</summary>
-        public bool HasModifierInCategory(GameplayTag category)
-        {
-            if (string.IsNullOrEmpty(category.TagName)) return false;
-
-            foreach (var mod in modifiers)
-            {
-                if (mod.IsExpired()) continue;
-                if (BuffCategoryTag.BelongsToCategory(mod.sourceTag, category))
-                    return true;
-            }
-
-            return false;
         }
 
         public void RemoveAllModifiers()
         {
-            if (modifiers.Count == 0) return;
-
-            var tags = new List<GameplayTag>();
-            for (int i = 0; i < modifiers.Count; i++)
-            {
-                var tag = modifiers[i].sourceTag;
-                if (string.IsNullOrEmpty(tag.TagName)) continue;
-
-                bool exists = false;
-                for (int j = 0; j < tags.Count; j++)
-                {
-                    if (tags[j].Matches(tag))
-                    {
-                        exists = true;
-                        break;
-                    }
-                }
-
-                if (!exists)
-                    tags.Add(tag);
-            }
-
             modifiers.Clear();
-
-            for (int i = 0; i < tags.Count; i++)
-                OnModifierRemoved?.Invoke(tags[i]);
         }
 
         // ---------- 生命周期更新 ----------
-        //由TurnManager调用。pauseBuffDurations 时跳过 Buff.* 来源修改器的回合递减。
-        public void TickModifiers(int turn, bool pauseBuffDurations = false)
+        //由TurnManager调用
+        public void TickModifiers(int turn)
         {
-            List<GameplayTag> expiredTags = null;
+            bool anyExpired = false;
             for (int i = 0; i < modifiers.Count; i++)
             {
                 var mod = modifiers[i];
-                if (pauseBuffDurations && IsBuffPrefixedModifier(mod.sourceTag))
-                    continue;
-
                 mod.Tick(turn);
                 modifiers[i] = mod;
-                if (mod.IsExpired())
-                {
-                    expiredTags ??= new List<GameplayTag>();
-                    if (!expiredTags.Contains(mod.sourceTag))
-                        expiredTags.Add(mod.sourceTag);
-                }
+                if (mod.IsExpired()) anyExpired = true;
             }
 
-            if (expiredTags == null) return;
-
-            modifiers.RemoveAll(m => m.IsExpired());
-
-            foreach (var tag in expiredTags)
+            if (anyExpired)
             {
-                if (!HasModifierWithTag(tag))
-                    OnModifierRemoved?.Invoke(tag);
+                modifiers.RemoveAll(m => m.IsExpired());
             }
-        }
-
-        /// <summary>
-        /// sourceTag 以 Buff. 开头的属性修改器；祈福护佑下不 Tick 其回合。
-        /// </summary>
-        public static bool IsBuffPrefixedModifier(GameplayTag sourceTag)
-        {
-            string name = sourceTag.TagName;
-            return !string.IsNullOrEmpty(name) && name.StartsWith("Buff.");
         }
 
         private AbilitySystemComponent cachedAsc;
@@ -305,15 +192,12 @@ using UnityEngine;
         // ---------- 伤害/治疗快捷方法 ----------测试用
         public void TakeDamage(float damage, GameplayTag damageType, AbilitySystemComponent instigator = null)
         {
-            var targetAsc = cachedAsc ?? GetComponent<AbilitySystemComponent>();
-
-            if (instigator != null && targetAsc != null)
-                damage = BattleBarrierManager.Instance.MitigateDamage(instigator, targetAsc, damage);
-
-            float finalDamage = Mathf.Max(1, (damage - Defense) * GetDamageTakenMultiplier());
+            float finalDamage = Mathf.Max(1, damage - Defense);
             float healthBefore = CurrentHealth;
             CurrentHealth -= finalDamage;
             Debug.Log($"[AttributeSet] 受到 {finalDamage} 点 {damageType} 伤害，剩余血量: {CurrentHealth}");
+
+            var targetAsc = cachedAsc ?? GetComponent<AbilitySystemComponent>();
 
             if (instigator != null)
             {
@@ -343,17 +227,8 @@ using UnityEngine;
                 targetAsc.NotifyDeath(instigator);
         }
 
-        public void Heal(
-            float amount,
-            AbilitySystemComponent instigator = null,
-            AbilitySystemComponent target = null,
-            bool bypassHealBlock = false)
+        public void Heal(float amount, AbilitySystemComponent instigator = null, AbilitySystemComponent target = null)
         {
-            if (amount <= 0f) return;
-
-            var targetAsc = target ?? cachedAsc ?? GetComponent<AbilitySystemComponent>();
-            if (!bypassHealBlock && !HealBlock.CanReceiveHeal(targetAsc)) return;
-
             float actualHeal = Mathf.Min(amount, MaxHealth - CurrentHealth);
             if (actualHeal <= 0) return;
 
@@ -361,6 +236,7 @@ using UnityEngine;
             CurrentHealth = newHealth;
             Debug.Log($"[AttributeSet] 治疗 {actualHeal} 点，当前血量: {CurrentHealth}");
 
+            var targetAsc = target ?? cachedAsc ?? GetComponent<AbilitySystemComponent>();
             if (instigator != null && targetAsc != null)
             {
                 CombatEventBus.Instance.Raise(new CombatEvent
@@ -371,38 +247,6 @@ using UnityEngine;
                     value = actualHeal
                 });
             }
-        }
-
-        /// <summary>
-        /// 生命消耗（献祭/自残）— 无视防御与禁疗；与 TakeDamage 分离，避免被减伤/护盾逻辑干扰。
-        /// </summary>
-        public void LoseHealth(float amount, AbilitySystemComponent instigator = null, bool leaveAtLeastOneHp = true)
-        {
-            if (amount <= 0f) return;
-
-            var targetAsc = cachedAsc ?? GetComponent<AbilitySystemComponent>();
-            float healthBefore = CurrentHealth;
-            float floor = leaveAtLeastOneHp ? 1f : 0f;
-            float actual = Mathf.Min(amount, Mathf.Max(0f, healthBefore - floor));
-            if (actual <= 0f) return;
-
-            CurrentHealth = healthBefore - actual;
-            Debug.Log($"[AttributeSet] 生命消耗 {actual} 点，剩余血量: {CurrentHealth}");
-
-            // 用 HealthCostApplied，勿发 DamageTaken，否则会进 Hit 受击态
-            if (targetAsc != null)
-            {
-                CombatEventBus.Instance.Raise(new CombatEvent
-                {
-                    type = CombatEventType.HealthCostApplied,
-                    instigator = instigator,
-                    target = targetAsc,
-                    value = actual
-                });
-            }
-
-            if (healthBefore > 0 && CurrentHealth <= 0 && targetAsc != null)
-                targetAsc.NotifyDeath(instigator);
         }
 
         public bool IsDead() => CurrentHealth <= 0;

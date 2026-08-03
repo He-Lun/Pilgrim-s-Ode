@@ -12,7 +12,7 @@ public enum NextKind
 
 /// <summary>
 /// “第一排”——行动条下一个要结算的条目。
-/// PeekNext：暂存区 → 队首插入 → 时间轴最前。
+/// PeekNext 返回：插入栈非空 → Action(栈顶)；否则 → Turn(时间轴最前)。
 /// </summary>
 public struct NextEntry
 {
