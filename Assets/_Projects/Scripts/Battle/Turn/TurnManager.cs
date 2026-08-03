@@ -36,7 +36,6 @@ public class TurnManager : MonoBehaviour
 
     public TurnPhase Phase { get; private set; }
     public AbilitySystemComponent CurrentActor { get; private set; }
-    public IReadOnlyList<AbilitySystemComponent> AllActors => allActors;
 
     // ---------- 事件 ----------
     public System.Action<TurnPhase> OnPhaseChanged;
@@ -86,11 +85,11 @@ public class TurnManager : MonoBehaviour
         allActors.Clear();
         allActors.AddRange(actors);
 
-        // 行动条入场（召唤物等 ParticipatesInActionQueue=false 会被跳过）
+        // 行动条入场
         actionQueue.Clear();
         foreach (var actor in allActors)
         {
-            if (actor != null && actor.ParticipatesInActionQueue)
+            if (actor != null)
                 actionQueue.Register(actor);
         }
 
@@ -109,11 +108,6 @@ public class TurnManager : MonoBehaviour
 
         // TODO: HandCardManager — 各角色开局首抽至手牌上限
 
-        BattleZoneManager.Instance.ClearAll();
-        BattleBarrierManager.Instance.ClearAll();
-        BattleDestructiblePropManager.Instance.ClearAll();
-        ElectricRingManager.Instance.ClearAll();
-
         battleActive = true;
         SetPhase(TurnPhase.BattleStart);
         AdvanceToNext();
@@ -123,7 +117,6 @@ public class TurnManager : MonoBehaviour
     public void EndCurrentTurn()
     {
         if (!battleActive || Phase != TurnPhase.TurnAction) return;
-        if (IsAnyonePresentingAbilityExcept(CurrentActor)) return;
         EnterTurnSettle();
     }
 
@@ -133,47 +126,22 @@ public class TurnManager : MonoBehaviour
     public void NotifyActionResolved()
     {
         if (!battleActive) return;
-
-        actionQueue?.TryCompleteActiveConfirmInsert();
-
-        if (actionQueue != null && actionQueue.CanFlushStagingOnActionResolved)
-            actionQueue.FlushStagingToFront();
-
         DrainInserts();
     }
 
-    /// <summary>除 except 外，是否仍有角色尚未触发 OnExit（其他角色须等待）。</summary>
-    public bool IsAnyonePresentingAbilityExcept(AbilitySystemComponent except)
-    {
-        if (!battleActive) return false;
-
-        for (int i = 0; i < allActors.Count; i++)
-        {
-            var actor = allActors[i];
-            if (actor == null || actor == except) continue;
-            if (actor.AbilityBlocksTurnHandoff) return true;
-        }
-
-        return false;
-    }
-
     // ==================================================================
-    //  激励完成入口（+AP / 行动提前 / 授予激励卡；不进插入栈）
+    //  激励完成入口（+3AP / 行动提前100% / 授予激励卡；不进插入栈）
     // ==================================================================
-    public void OnInspirationCompleted(
-        AbilitySystemComponent asc,
-        GameplayAbility inspiration,
-        InspirationTaskSO task = null)
+    // 说明：目前 InspirationTaskTracker 仍走旧逻辑（自动释放技能 + ForceImmediateTurn）。
+    //       待 HandCardManager 落地后，把 Tracker 改为只调用本方法。
+    public void OnInspirationCompleted(AbilitySystemComponent asc, GameplayAbility inspiration)
     {
         if (asc == null) return;
 
-        int apReward = task != null ? task.actionPointReward : 3;
-        float priorityBoost = task != null ? task.actionPriorityBoost : 1f;
-
-        asc.TeamResource?.AddActionPoints(apReward);
+        asc.TeamResource?.AddActionPoints(3);
 
         if (actionQueue != null)
-            actionQueue.AdvanceForward(asc, priorityBoost);
+            actionQueue.AdvanceForward(asc, 1f);
 
         // TODO: HandCardManager — 授予激励卡（计入上限，满手则失去；可叠加；打出即消耗移除）
         // asc.HandCards?.GrantInspirationCard(inspiration);
@@ -183,42 +151,14 @@ public class TurnManager : MonoBehaviour
     //  插入行动对外入口（追击/反击等可用）
     // ==================================================================
 
-    public void PushInsert(PendingAction action, bool deferUntilTurnEnd = false)
+    public void PushInsert(PendingAction action)
     {
-        if (actionQueue == null)
-            return;
-
-        if (Phase == TurnPhase.TurnAction && CurrentActor != null)
-            actionQueue.StageInsert(action, deferUntilTurnEnd);
-        else
-            actionQueue.EnqueueInsertFront(action);
+        actionQueue?.PushInsert(action);
     }
 
-    public void PushInsertBatch(List<PendingAction> batch, bool deferUntilTurnEnd = false)
+    public void PushInsertBatch(List<PendingAction> batch)
     {
-        if (actionQueue == null || batch == null || batch.Count == 0)
-            return;
-
-        if (Phase == TurnPhase.TurnAction && CurrentActor != null)
-        {
-            var ordered = new List<PendingAction>(batch);
-            ordered.Sort(CompareInsertBatch);
-            for (int i = 0; i < ordered.Count; i++)
-                actionQueue.StageInsert(ordered[i], deferUntilTurnEnd);
-            return;
-        }
-
-        actionQueue.EnqueueInsertFrontBatch(batch);
-    }
-
-    private static int CompareInsertBatch(PendingAction a, PendingAction b)
-    {
-        int byPriority = ((int)b.priority).CompareTo((int)a.priority);
-        if (byPriority != 0) return byPriority;
-
-        float agiA = a.actor != null && a.actor.Attributes != null ? a.actor.Attributes.Agility : 0f;
-        float agiB = b.actor != null && b.actor.Attributes != null ? b.actor.Attributes.Agility : 0f;
-        return agiB.CompareTo(agiA);
+        actionQueue?.PushInsertBatch(batch);
     }
 
     // ==================================================================
@@ -258,25 +198,13 @@ public class TurnManager : MonoBehaviour
     private void EnterTurnStart(AbilitySystemComponent actor)
     {
         CurrentActor = actor;
-        actionQueue?.EnqueueTurnBack(actor);
         SetPhase(TurnPhase.TurnStart);
-
-        // 眩晕：跳过本回合行动，直接结算（Tick 状态持续）
-        if (actor != null && actor.HasTag(GameplayTag.Debuff.Stun))
-        {
-            RaiseTurnEvent(CombatEventType.TurnStarted, actor);
-            OnTurnBegan?.Invoke(actor);
-            EnterTurnSettle();
-            return;
-        }
 
         // 行动点 +1
         actor.TeamResource?.OnTurnStart(1);
 
-        // 刷新移动力
-        actor.GetComponent<CharacterMovementController>()?.RefreshMoveBudget();
-
         // TODO: HandCardManager — 抽牌至手牌上限 handLimit
+        // TODO: 移动系统 — 按 actor.Attributes.Speed 刷新本回合移动值
 
         RaiseTurnEvent(CombatEventType.TurnStarted, actor);
         OnTurnBegan?.Invoke(actor);
@@ -290,16 +218,11 @@ public class TurnManager : MonoBehaviour
         var actor = CurrentActor;
         SetPhase(TurnPhase.TurnSettle);
 
-        actionQueue?.PopTurnToken(actor);
-        actionQueue?.FlushStagingToFront();
+        // 结束前先把残留插入行动排空
         DrainInserts();
 
-        // Buff 按“该角色回合”结算；有祈福护佑则冻结增益持续
-        bool pauseBuffs = actor != null && actor.HasTag(GameplayTag.Buff.BlessingWard);
-        actor?.Attributes?.TickModifiers(1, pauseBuffs);
-
-        // 施法者回合结束：仪式持续倒数
-        actor?.RitualTracker?.OnCasterTurnEnded();
+        // Buff 按“该角色回合”结算一次
+        actor?.Attributes?.TickModifiers(1);
 
         RaiseTurnEvent(CombatEventType.TurnEnded, actor);
         OnTurnEnded?.Invoke(actor);
@@ -324,10 +247,6 @@ public class TurnManager : MonoBehaviour
     {
         battleActive = false;
         CurrentActor = null;
-        BattleZoneManager.Instance.ClearAll();
-        BattleBarrierManager.Instance.ClearAll();
-        BattleDestructiblePropManager.Instance.ClearAll();
-        ElectricRingManager.Instance.ClearAll();
         SetPhase(TurnPhase.BattleEnd);
 
         OnBattleEnded?.Invoke(winnerTeamId);
@@ -342,25 +261,15 @@ public class TurnManager : MonoBehaviour
         if (actionQueue == null) return;
 
         int guard = 0;
-        const int maxIter = 256;
-        while (actionQueue.TryPopFrontInsert(out var pending) && guard++ < maxIter)
+        const int maxIter = 256; // 防连锁死循环
+        while (actionQueue.HasInsert && guard++ < maxIter)
         {
-            if (pending.actor == null || pending.ability == null)
-                continue;
+            var pending = actionQueue.PopInsert();
+            if (pending.actor == null || pending.ability == null) continue;
 
-            if (pending.priority == InsertPriority.FollowUp)
-            {
-                pending.ability.TryActivateAsInsert(pending.actor, pending.context);
-                if (pending.actor != null && pending.actor.AbilityBlocksTurnHandoff)
-                    break;
-
-                actionQueue.CompleteFrontConfirmInsert();
-            }
-            else
-            {
-                pending.ability.TryActivateAsInspiration(pending.actor, pending.context);
-                actionQueue.CompleteFrontConfirmInsert();
-            }
+            // 作为“行动”结算：绕过行动点，执行效果并广播 AbilityUsed；
+            // 期间新触发的插入（如连锁死亡）会压到栈顶，天然深度优先。
+            pending.ability.TryActivateAsInspiration(pending.actor, pending.context);
         }
 
         if (guard >= maxIter)
@@ -382,31 +291,20 @@ public class TurnManager : MonoBehaviour
     {
         winnerTeamId = -1;
 
-        var allTeams = new HashSet<int>();
-        var teamsWithLiving = new HashSet<int>();
-
+        var aliveTeams = new HashSet<int>();
         foreach (var a in allActors)
         {
             if (a == null) continue;
-            allTeams.Add(a.TeamId);
-
-            if (a.Attributes == null || !a.Attributes.IsDead())
-                teamsWithLiving.Add(a.TeamId);
+            if (a.Attributes != null && a.Attributes.IsDead()) continue;
+            aliveTeams.Add(a.TeamId);
         }
 
-        // 全员阵亡 → 平局结束
-        if (teamsWithLiving.Count == 0)
-            return true;
+        if (aliveTeams.Count == 0)
+            return true; // 平局
 
-        // 仅一个阵营参战（常见于本地测试）→ 不判胜负，战斗继续
-        if (allTeams.Count <= 1)
-            return false;
-
-        // 多个阵营中只剩一方有人存活 → 该方获胜
-        if (teamsWithLiving.Count == 1)
+        if (aliveTeams.Count == 1)
         {
-            foreach (var t in teamsWithLiving)
-                winnerTeamId = t;
+            foreach (var t in aliveTeams) winnerTeamId = t;
             return true;
         }
 

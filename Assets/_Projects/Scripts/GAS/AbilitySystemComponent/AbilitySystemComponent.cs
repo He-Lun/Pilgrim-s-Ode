@@ -10,27 +10,11 @@ using UnityEngine;
         [Header("========== 核心引用 ==========")]
         [SerializeField] private AttributeSet attributes;
         [SerializeField] private List<GameplayTag> appliedTags = new List<GameplayTag>();
-        private InspirationTaskTracker inspirationTracker = new InspirationTaskTracker();
-        private RitualChannelTracker ritualTracker = new RitualChannelTracker();
-        private MoonSoulTracker moonSoulTracker = new MoonSoulTracker();
-        private SacredBonePassiveTracker sacredBoneTracker = new SacredBonePassiveTracker();
-
-        [Header("========== 角色配置 ==========")]
-        [SerializeField] private CharacterDataSO characterData;
+        private InspirationTaskTracker inspirationTracker;
 
         [Header("========== 能力配置 ==========")]
         [SerializeField] private GameplayAbility inspirationAbility;
         [SerializeField] private List<GameplayAbility> passiveAbilities = new List<GameplayAbility>();
-
-        private readonly List<GameplayAbility> knownAbilities = new List<GameplayAbility>();
-        private GameplayAbility pendingAbility;
-        private AbilityActivationContext pendingContext;
-        private bool pendingHitResolved;
-        private bool pendingHit2Resolved;
-        private bool pendingHit3Resolved;
-        private bool pendingHit4Resolved;
-        private bool pendingCompleteResolved;
-        private bool abilityBlocksTurnHandoff;
 
         [Header("========== 阵营 ==========")]
         [SerializeField] private int teamId;
@@ -38,36 +22,13 @@ using UnityEngine;
         [Header("========== 阵营资源 ==========")]
         [SerializeField] private TeamResourceManager teamResource;
 
-        [Tooltip("可摧毁召唤物等：有血量/名字，但不进入行动条")]
-        [SerializeField] private bool participatesInActionQueue = true;
-
         public TeamResourceManager TeamResource => teamResource;
         public int TeamId => teamId;
-        public bool ParticipatesInActionQueue => participatesInActionQueue;
-        public CharacterDataSO CharacterData => characterData;
-        public IReadOnlyList<GameplayAbility> KnownAbilities => knownAbilities;
         public GameplayAbility InspirationAbility => inspirationAbility;
         public InspirationTaskTracker InspirationTracker => inspirationTracker;
-        public RitualChannelTracker RitualTracker => ritualTracker;
-        public MoonSoulTracker MoonSoul => moonSoulTracker;
-        public SacredBonePassiveTracker SacredBone => sacredBoneTracker;
-        public bool IsChanneling => ritualTracker.IsActive;
-        public bool HasMoonSoul => moonSoulTracker != null && moonSoulTracker.IsBound;
-
-        public bool HasPendingAbility => pendingAbility != null;
-        /// <summary>技能尚未触发 OnExit，其他角色须等待（与 HasPendingAbility 独立，引导技可在 OnExit 后继续引导）。</summary>
-        public bool AbilityBlocksTurnHandoff => abilityBlocksTurnHandoff;
-
-        /// <summary>主动/被动打断祈福引导。</summary>
-        public void InterruptRitualIfAny()
-        {
-            if (!ritualTracker.IsActive) return;
-            ritualTracker.Interrupt();
-        }
 
         // ---------- 事件 ----------
         public Action<GameplayAbility, List<AbilitySystemComponent>> OnAbilityUsed;
-        public Action<GameplayAbility> OnAbilityActivationEnded;
         public Action<GameplayTag> OnTagAdded;
         public Action<GameplayTag> OnTagRemoved;
         public Action<AbilitySystemComponent> OnDeath;
@@ -78,23 +39,13 @@ using UnityEngine;
 
         void Awake()
         {
-            attributes ??= GetComponent<AttributeSet>();
-            if (attributes != null)
-                attributes.OnModifierRemoved += HandleModifierRemoved;
+            inspirationTracker ??= new InspirationTaskTracker();
         }
 
         void OnDestroy()
         {
-            inspirationTracker.Dispose();
-            ritualTracker.Dispose();
-            moonSoulTracker.Dispose();
-            sacredBoneTracker.Dispose();
-            if (attributes != null)
-                attributes.OnModifierRemoved -= HandleModifierRemoved;
+            inspirationTracker?.Dispose();
         }
-
-        /// <summary>修改器过期/驱散时同步移除对应状态标签（眩晕、属性 Buff 等）。</summary>
-        private void HandleModifierRemoved(GameplayTag tag) => RemoveTag(tag);
 
         // ---------- 初始化 ----------
         public void Initialize(AttributeSet attrs, TeamResourceManager resource, int team = 0)
@@ -105,51 +56,12 @@ using UnityEngine;
             appliedTags.Clear();
         }
 
-        /// <summary>可摧毁召唤物：阵营与施法者相同，无队伍资源，默认不进入行动条。</summary>
-        public void InitializeAsProp(AttributeSet attrs, int team)
-        {
-            Initialize(attrs, resource: null, team);
-            participatesInActionQueue = false;
-            characterData = null;
-        }
-
-        public void SetParticipatesInActionQueue(bool value) => participatesInActionQueue = value;
-
-        /// <summary>信息面板显示名：角色数据 → 召唤物组件 → 物体名。</summary>
-        public string GetDisplayName()
-        {
-            if (characterData != null && !string.IsNullOrEmpty(characterData.DisplayName))
-                return characterData.DisplayName;
-
-            var prop = GetComponent<DestructibleBattleProp>();
-            if (prop != null && !string.IsNullOrEmpty(prop.DisplayName))
-                return prop.DisplayName;
-
-            return gameObject.name;
-        }
-
-        public string GetDisplayDescription()
-        {
-            if (characterData != null && !string.IsNullOrEmpty(characterData.description))
-                return characterData.description;
-
-            var prop = GetComponent<DestructibleBattleProp>();
-            if (prop != null && !string.IsNullOrEmpty(prop.Description))
-                return prop.Description;
-
-            return string.Empty;
-        }
-
         public void SetupFromCharacterData(CharacterDataSO data, TeamResourceManager resource, int team = 0)
         {
             if (data == null) return;
 
-            characterData = data;
             Initialize(attributes ?? GetComponent<AttributeSet>(), resource, team);
             attributes?.Initialize(data);
-
-            ApplyIdentityTags(data);
-            RebuildKnownAbilities(data);
 
             inspirationAbility = data.inspirationAbility;
 
@@ -160,101 +72,6 @@ using UnityEngine;
             SetupPassives();
 
             inspirationTracker.Initialize(data.inspirationTask, data.inspirationAbility, this);
-            moonSoulTracker.Initialize(this, data.moonSoulConfig);
-        }
-
-        private void ApplyIdentityTags(CharacterDataSO data)
-        {
-            if (!string.IsNullOrEmpty(data.job.TagName))
-                AddTag(data.job);
-            if (!string.IsNullOrEmpty(data.kingdom.TagName))
-                AddTag(data.kingdom);
-            if (!string.IsNullOrEmpty(data.characterTag.TagName))
-                AddTag(data.characterTag);
-        }
-
-        private void RebuildKnownAbilities(CharacterDataSO data)
-        {
-            knownAbilities.Clear();
-            foreach (var ability in data.GetAllKnownAbilities())
-                knownAbilities.Add(ability);
-        }
-
-        public AbilityPresentationEntry GetPresentation(GameplayAbility ability)
-        {
-            if (characterData != null)
-                return characterData.ResolvePresentation(ability);
-
-            return AbilityPresentationEntry.FromAbilityDefaults(ability);
-        }
-
-        public bool KnowsAbility(GameplayAbility ability)
-        {
-            return ability != null && knownAbilities.Contains(ability);
-        }
-
-        public void BeginAbilityActivation(GameplayAbility ability, AbilityActivationContext context)
-        {
-            pendingAbility = ability;
-            pendingContext = context;
-            pendingHitResolved = false;
-            pendingHit2Resolved = false;
-            pendingHit3Resolved = false;
-            pendingHit4Resolved = false;
-            pendingCompleteResolved = false;
-            abilityBlocksTurnHandoff = true;
-        }
-
-        /// <summary>动画事件 OnExit — 允许其他角色继续行动；不结束技能 pending 与引导。</summary>
-        public void MarkAbilityExit()
-        {
-            abilityBlocksTurnHandoff = false;
-        }
-
-        public void ResolvePendingAbilityPhase(AbilityEffectPhase phase)
-        {
-            if (pendingAbility == null) return;
-
-            switch (phase)
-            {
-                case AbilityEffectPhase.OnHit:
-                    if (pendingHitResolved) return;
-                    pendingHitResolved = true;
-                    break;
-                case AbilityEffectPhase.OnHit2:
-                    if (pendingHit2Resolved) return;
-                    pendingHit2Resolved = true;
-                    break;
-                case AbilityEffectPhase.OnHit3:
-                    if (pendingHit3Resolved) return;
-                    pendingHit3Resolved = true;
-                    break;
-                case AbilityEffectPhase.OnHit4:
-                    if (pendingHit4Resolved) return;
-                    pendingHit4Resolved = true;
-                    break;
-                case AbilityEffectPhase.OnComplete:
-                    if (pendingCompleteResolved) return;
-                    pendingCompleteResolved = true;
-                    break;
-            }
-
-            pendingAbility.ExecuteEffectsByPhase(this, pendingContext, phase);
-        }
-
-        public void ClearPendingAbility()
-        {
-            var ended = pendingAbility;
-            pendingAbility = null;
-            pendingHitResolved = false;
-            pendingHit2Resolved = false;
-            pendingHit3Resolved = false;
-            pendingHit4Resolved = false;
-            pendingCompleteResolved = false;
-            abilityBlocksTurnHandoff = false;
-
-            if (ended != null)
-                OnAbilityActivationEnded?.Invoke(ended);
         }
 
         public bool HasEnoughActionPoints(int cost)
@@ -273,7 +90,8 @@ using UnityEngine;
             foreach (var passive in passiveAbilities)
             {
                 if (passive == null) continue;
-                passive.TryActivatePassiveSetup(this);
+                var dummy = new List<AbilitySystemComponent> { this };
+                passive.TryActivate(this, dummy);
             }
         }
 
@@ -284,9 +102,6 @@ using UnityEngine;
             if (ability == null)
                 return AbilityActivationResult.UnknownError;
 
-            if (ritualTracker.IsActive)
-                ritualTracker.Interrupt();
-
             return ability.TryActivate(this, context);
         }
 
@@ -295,9 +110,6 @@ using UnityEngine;
         {
             if (ability == null)
                 return AbilityActivationResult.UnknownError;
-
-            if (ritualTracker.IsActive)
-                ritualTracker.Interrupt();
 
             return ability.TryActivate(this, AbilityActivationContext.FromTargets(
                 targets ?? new List<AbilitySystemComponent> { this }));
@@ -331,20 +143,8 @@ using UnityEngine;
 
         public void RemoveTag(GameplayTag tag)
         {
-            if (!appliedTags.HasTag(tag)) return;
             appliedTags.RemoveTag(tag);
             OnTagRemoved?.Invoke(tag);
-        }
-
-        /// <summary>清除全部运行时标签（逐个触发 OnTagRemoved，供表现层收尾）。</summary>
-        public void ClearAllTags()
-        {
-            if (appliedTags.Count == 0) return;
-
-            var snapshot = new List<GameplayTag>(appliedTags);
-            appliedTags.Clear();
-            for (int i = 0; i < snapshot.Count; i++)
-                OnTagRemoved?.Invoke(snapshot[i]);
         }
 
         public bool HasAnyTag(List<GameplayTag> tags)
@@ -361,72 +161,32 @@ using UnityEngine;
             return true;
         }
 
-        /// <summary>是否仍有该类别的 buff（修改器或 tag-only 状态）。</summary>
-        public bool HasActiveEffectCategory(GameplayTag category)
-        {
-            if (string.IsNullOrEmpty(category.TagName)) return false;
-            if (attributes != null && attributes.HasModifierInCategory(category)) return true;
-
-            foreach (var tag in appliedTags)
-            {
-                if (BuffCategoryTag.BelongsToCategory(tag, category))
-                    return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>施加 Buff 并广播事件（供 AbilityEffect 调用）</summary>
+        /// <summary>
+        /// 施加 Buff 并广播事件（供 AbilityEffect 调用）
+        /// </summary>
         public void ApplyBuffTo(AbilitySystemComponent target, GameplayTag buffTag, AbilitySystemComponent instigator = null)
         {
-            if (target == null) return;
-            target.AddTag(buffTag);
-            NotifyBuffPresentation(target, buffTag, instigator ?? this);
-        }
-
-        /// <summary>一次性目标特效（无 buff tag，如行动提前）。</summary>
-        public void PlayTargetEffect(AbilitySystemComponent target, VfxSpawnEntry vfx)
-        {
-            if (target == null || vfx == null || !vfx.IsValid) return;
+            target?.AddTag(buffTag);
 
             CombatEventBus.Instance.Raise(new CombatEvent
             {
                 type = CombatEventType.BuffApplied,
-                instigator = this,
+                instigator = instigator ?? this,
                 target = target,
-                effectVfx = vfx
-            });
-        }
-
-        public static void NotifyBuffPresentation(
-            AbilitySystemComponent target,
-            GameplayTag instanceTag,
-            AbilitySystemComponent instigator)
-        {
-            if (target == null) return;
-
-            CombatEventBus.Instance.Raise(new CombatEvent
-            {
-                type = CombatEventType.BuffApplied,
-                instigator = instigator,
-                target = target,
-                tag = instanceTag
+                tag = buffTag
             });
         }
 
         /// <summary>
-        /// 广播移动事件（供移动系统调用），distanceMeters 为本次移动米数。
-        /// movePathPoints 含起点的折线，供领域“穿行即伤”判定。
+        /// 广播移动事件（供移动系统调用）
         /// </summary>
-        public void NotifyMoved(float distanceMeters, List<Vector3> movePathPoints = null)
+        public void NotifyMoved(int distance)
         {
             CombatEventBus.Instance.Raise(new CombatEvent
             {
                 type = CombatEventType.CharacterMoved,
                 instigator = this,
-                value = distanceMeters,
-                intValue = Mathf.Max(1, Mathf.RoundToInt(distanceMeters)),
-                movePathPoints = movePathPoints
+                intValue = distance
             });
         }
 
@@ -435,15 +195,6 @@ using UnityEngine;
 
         public void NotifyDeath(AbilitySystemComponent killer)
         {
-            InterruptRitualIfAny();
-            ClearPendingAbility();
-            moonSoulTracker.Dispose();
-            sacredBoneTracker.Dispose();
-
-            // 先清修改器再清 tag，避免残留 Buff/眩晕等状态
-            attributes?.RemoveAllModifiers();
-            ClearAllTags();
-
             OnDeath?.Invoke(this);
 
             CombatEventBus.Instance.Raise(new CombatEvent

@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78dd6cfcb7b7f294fab2f298d384ab35, type: 3}
+  m_Name: Divine Smite
+  m_EditorClassIdentifier: 
+  abilityName: "\u81F3\u5723\u65A9"
+  description: "\u5BF9\u5355\u4E2A\u654C\u65B9\u76EE\u6807\u8FDB\u884C\u4E00\u6B21\u5177\u6709\u5723\u5149\u52A0\u6301\u7684\u65A9\u51FB"
+  icon: {fileID: 0}
+  actionPointCost: 4
+  isInstant: 0
+  targetScope: 1
+  areaRadius: 1
+  requiredTags:
+  - tagName: Job.Paladin
+  blockTags: []
+  abilityTags: []
+  effects:
+  - rid: 3699151960701927430
+  - rid: 3699151960701927432
+  references:
+    version: 2
+    RefIds:
+    - rid: 3699151960701927430
+      type: {class: DamageEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u9020\u6210180%\u653B\u51FB\u529B\u5723\u5149\u5C5E\u6027\u4F24\u5BB3"
+        scaler: 1.8
+        damageType:
+          tagName: DamageType.Divine
+    - rid: 3699151960701927432
+      type: {class: DamageEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u9020\u621030%\u653B\u51FB\u529B\u7269\u7406\u4F24\u5BB3"
+        scaler: 0.3
+        damageType:
+          tagName: DamageType.Physical
