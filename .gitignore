@@ -1,59 +1,10 @@
-# Unity 项目 .gitignore
-# 仅忽略引擎自动生成的缓存/构建目录，Assets 内所有素材（场景、模型、贴图、预制体等）均会正常提交。
-
-# Unity 自动生成的目录（体积大、每台机器不同，不应上传）
-/[Ll]ibrary/
-/[Tt]emp/
-/[Oo]bj/
-/[Bb]uild/
-/[Bb]uilds/
-/[Ll]ogs/
-/[Uu]ser[Ss]ettings/
-
-# 调试/录制文件
-/[Mm]emoryCaptures/
-/[Rr]ecordings/
-
-# IDE 与编辑器缓存
-.vs/
-.vscode/
-.idea/
-*.DotSettings.user
-
-# Unity 自动生成的 VS/Rider 解决方案文件（打开项目后会重新生成）
+/Library/
+/Temp/
+/Obj/
+/Build/
+/Builds/
+/Logs/
+/UserSettings/
+/MemoryCaptures/
 *.csproj
-*.unityproj
 *.sln
-*.suo
-*.user
-*.userprefs
-*.pidb
-*.booproj
-*.svd
-*.pdb
-*.mdb
-*.opendb
-*.VC.db
-ExportedObj/
-.consulo/
-
-# 崩溃报告
-sysinfo.txt
-crashlytics-build.properties
-
-# 构建产物
-*.apk
-*.aab
-*.unitypackage
-*.app
-
-# Addressables 构建缓存
-/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
-/[Aa]ssets/[Ss]treamingAssets/aa.meta
-/[Aa]ssets/[Ss]treamingAssets/aa/*
-
-# JetBrains Rider 插件（自动生成）
-/[Aa]ssets/Plugins/Editor/JetBrains*
-
-# Android Gradle 缓存
-.gradle/
