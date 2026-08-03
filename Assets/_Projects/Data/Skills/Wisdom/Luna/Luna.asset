@@ -1,0 +1,186 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f1df5b9c51c11744905016b27aefef2, type: 3}
+  m_Name: Luna
+  m_EditorClassIdentifier: 
+  characterName: "\u9732\u5A1C"
+  portrait: {fileID: 0}
+  description: "\u6B27\u68EE\u5C3C\u4E9A\u6708\u795E\u6D3E\u7CFB\u7684\u738B\u65CF\u4E3A\u4E86\u906E\u63A9\u514B\u9686\u5B9E\u9A8C\u7684\u5931\u8D25\uFF0C\u4E0D\u5F97\u4E0D\u9500\u6BC1\u5B9E\u9A8C\u7684\u4EA7\u7269\uFF0C\u800C\u9732\u5A1C\uFF08\u542F\u661F001\uFF09\u5C31\u662F\u5176\u4E2D\u4E4B\u4E00\u3002\u4E3A\u4E86\u8FFD\u6EAF\u81EA\u5DF1\u7684\u672C\u6E90\uFF0C\u9732\u5A1C\u8E0F\u4E0A\u4E86\u5DE1\u793C\u7684\u65C5\u9014\u3002"
+  job:
+    tagName: Job.Wisdom
+  kingdom:
+    tagName: Kingdom.Ossenia
+  baseHealth: 4000
+  baseAttack: 70
+  baseDefense: 40
+  baseAgility: 101
+  baseSpeed: 15
+  jobAbilityPool: {fileID: 11400000, guid: 4c23c22c60ac0c6428a2e175b0450e74, type: 2}
+  exclusiveAbilities: []
+  abilityPresentations:
+  - ability: {fileID: 11400000, guid: 9c695cbc34039084b8f32512f1791e6b, type: 2}
+    skillAnimIndex: 1
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 1805862227356902, guid: a9f5a4012e8704748864bb9734d7bf16, type: 3}
+      timing: 0
+      anchor:
+        type: 5
+        attachPointId: WeaponTip
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 0
+  - ability: {fileID: 11400000, guid: 7044590ba59cea34f8645e8fbbd71e4c, type: 2}
+    skillAnimIndex: 2
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 2842540418666017718, guid: 40eeb2fa0cb8416bbf3c301b58939ae1,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 4
+        attachPointId: 
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 0
+      rotationMode: 0
+      autoDestroySeconds: 0
+  - ability: {fileID: 11400000, guid: 41974b4b75741564aa08f7a015b3cfca, type: 2}
+    skillAnimIndex: 3
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 1556776104392117518, guid: 2e95184c4ab1d94438ede4ce720ed33e,
+        type: 3}
+      timing: 1
+      anchor:
+        type: 4
+        attachPointId: 
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 0
+      rotationMode: 0
+      autoDestroySeconds: 0
+  - ability: {fileID: 11400000, guid: 486b713a5c64a524ebc08e4fd0d7108e, type: 2}
+    skillAnimIndex: 4
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 5155637711965224123, guid: 8c360e33574a5184283cd31fcdce6c23,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 5
+        attachPointId: WeaponTip
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 0
+    - prefab: {fileID: 1922872745006343841, guid: ee21a08277eaa164db8cd9fe8e2f35ff,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 1
+        attachPointId: WeaponTip
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 0
+  - ability: {fileID: 11400000, guid: 0a06d6c5a3c59c64b9df9d638d67f4df, type: 2}
+    skillAnimIndex: 5
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 1922872745006343841, guid: ee21a08277eaa164db8cd9fe8e2f35ff,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 1
+        attachPointId: 
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 0
+  - ability: {fileID: 11400000, guid: 132e53fd8427f4240bed25321d011a5e, type: 2}
+    skillAnimIndex: 6
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 1885483909729086, guid: 4d34c64a62ee0db43a2623811a4f2995, type: 3}
+      timing: 0
+      anchor:
+        type: 5
+        attachPointId: WeaponTip
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 0
+    - prefab: {fileID: 3535532378343149191, guid: 40d7211ced9a34e4eb927430af9e6268,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 1
+        attachPointId: WeaponTip
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 0
+      autoDestroySeconds: 0
+  - ability: {fileID: 11400000, guid: 216504ac118e571439bdaf2740039b86, type: 2}
+    skillAnimIndex: 7
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 6630909710920697716, guid: 5da31153f135ae949a4418bfa1088810,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 5
+        attachPointId: WeaponTip
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 3
+      autoDestroySeconds: 0
+    - prefab: {fileID: 1922872745006343841, guid: ee21a08277eaa164db8cd9fe8e2f35ff,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 1
+        attachPointId: WeaponTip
+        localOffset: {x: 0, y: 0, z: 0}
+      attachMode: 1
+      rotationMode: 3
+      autoDestroySeconds: 0
+  - ability: {fileID: 11400000, guid: 7f8e9d0c1b2a39485766758493a2b1c0, type: 2}
+    skillAnimIndex: 8
+    animTrigger: SkillIndex
+    vfxOverrides:
+    - prefab: {fileID: 1416316459738711312, guid: 6e6d537920fade741969835021a5f1f3,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 4
+        attachPointId: 
+        localOffset: {x: 0, y: 0.14, z: 0}
+      attachMode: 0
+      rotationMode: 0
+      autoDestroySeconds: 0
+    - prefab: {fileID: 5287735372232742843, guid: 4b88b75347bc2574f9f9da98c03eb4d1,
+        type: 3}
+      timing: 0
+      anchor:
+        type: 4
+        attachPointId: 
+        localOffset: {x: 0, y: 0.14, z: 0}
+      attachMode: 0
+      rotationMode: 0
+      autoDestroySeconds: 0
+  innateAbilities:
+  - {fileID: 11400000, guid: 8f3a2b1c4d5e6f708192a3b4c5d6e7f8, type: 2}
+  characterTag:
+    tagName: Character.Luna
+  inspirationAbility: {fileID: 11400000, guid: 7f8e9d0c1b2a39485766758493a2b1c0, type: 2}
+  inspirationTask: {fileID: 11400000, guid: 8800dee0512fc7941be8f24d1b05fe00, type: 2}
+  moonSoulConfig: {fileID: 11400000, guid: 1a2b3c4d5e6f708192a3b4c5d6e7f809, type: 2}

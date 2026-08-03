@@ -3,25 +3,29 @@ using UnityEngine;
 
 /// <summary>
 /// 技能释放上下文 — 由 UI / HandCardManager 在出牌时构造，经 Facade 传入 ASC。
-/// 不同技能使用不同字段；未使用的字段保持默认值即可。
 /// </summary>
 public struct AbilityActivationContext
 {
-    /// <summary>玩家手动选择的目标（火球、单疗等）。突进类技能可为空，由 Effect 在移动后解析。</summary>
     public List<AbilitySystemComponent> explicitTargets;
-
-    /// <summary>网格方向，如 (0,1)=向北。突进、方向性技能使用。</summary>
     public Vector2Int direction;
 
-    /// <summary>玩家点击的目标格子（范围技、位移落点等）。</summary>
+    [System.Obsolete("Use targetWorldPoint for meter-based combat.")]
     public Vector2Int targetCell;
 
-    /// <summary>移动/突进距离（格数）。0 表示由技能或 Effect 配置决定。</summary>
+    [System.Obsolete("Use moveDistanceMeters.")]
     public int moveDistance;
 
-    // ---------- 工厂方法（卡牌/UI 使用） ----------
+    /// <summary>玩家点击的世界坐标（范围技、位移落点等）。</summary>
+    public Vector3 targetWorldPoint;
+    public bool hasTargetPoint;
 
-    /// <summary>无额外参数，适用于 TargetScope.Self。</summary>
+    /// <summary>移动/突进距离（米）。0 表示由技能配置决定。</summary>
+    public float moveDistanceMeters;
+
+    /// <summary>360° 自由指向 — 水平归一化方向（DirectedRect 等）。</summary>
+    public Vector3 aimDirectionWorld;
+    public bool hasAimDirection;
+
     public static AbilityActivationContext Self()
     {
         return new AbilityActivationContext
@@ -30,7 +34,6 @@ public struct AbilityActivationContext
         };
     }
 
-    /// <summary>单个目标，适用于 SingleEnemy / SingleAlly。</summary>
     public static AbilityActivationContext SingleTarget(AbilitySystemComponent target)
     {
         return new AbilityActivationContext
@@ -41,7 +44,6 @@ public struct AbilityActivationContext
         };
     }
 
-    /// <summary>多个目标，适用于 AllEnemies 等（由 UI 预先选好列表）。</summary>
     public static AbilityActivationContext FromTargets(List<AbilitySystemComponent> targets)
     {
         return new AbilityActivationContext
@@ -50,18 +52,43 @@ public struct AbilityActivationContext
         };
     }
 
-    /// <summary>方向性技能（突进等），目标在 Effect 执行阶段解析。</summary>
-    public static AbilityActivationContext WithDirection(Vector2Int dir, int distance = 0)
+    public static AbilityActivationContext WithDirection(Vector2Int dir, float distanceMeters = 0f)
     {
         return new AbilityActivationContext
         {
             direction = dir,
-            moveDistance = distance,
+            moveDistanceMeters = distanceMeters,
             explicitTargets = new List<AbilitySystemComponent>()
         };
     }
 
-    /// <summary>点选格子，适用于 Area 等。</summary>
+    public static AbilityActivationContext WithAimDirection(Vector3 worldDirection)
+    {
+        worldDirection.y = 0f;
+        if (worldDirection.sqrMagnitude < 0.0001f)
+            worldDirection = Vector3.forward;
+
+        return new AbilityActivationContext
+        {
+            aimDirectionWorld = worldDirection.normalized,
+            hasAimDirection = true,
+            explicitTargets = new List<AbilitySystemComponent>()
+        };
+    }
+
+    public static AbilityActivationContext WithTargetPoint(Vector3 worldPoint)
+    {
+        worldPoint = BattleTargeting.ProjectToGround(worldPoint);
+
+        return new AbilityActivationContext
+        {
+            targetWorldPoint = worldPoint,
+            hasTargetPoint = true,
+            explicitTargets = new List<AbilitySystemComponent>()
+        };
+    }
+
+    [System.Obsolete("Use WithTargetPoint.")]
     public static AbilityActivationContext WithTargetCell(Vector2Int cell)
     {
         return new AbilityActivationContext
@@ -71,16 +98,18 @@ public struct AbilityActivationContext
         };
     }
 
-    // ---------- 查询 ----------
-
     public bool HasExplicitTargets =>
         explicitTargets != null && explicitTargets.Count > 0;
 
     public bool HasDirection => direction != Vector2Int.zero;
 
+    [System.Obsolete("Use HasTargetPoint.")]
     public bool HasTargetCell => targetCell != Vector2Int.zero;
 
-    /// <summary>获取显式目标列表，永不为 null。</summary>
+    public bool HasTargetPoint => hasTargetPoint;
+
+    public bool HasAimDirection => hasAimDirection;
+
     public List<AbilitySystemComponent> GetExplicitTargets()
     {
         return explicitTargets ?? new List<AbilitySystemComponent>();

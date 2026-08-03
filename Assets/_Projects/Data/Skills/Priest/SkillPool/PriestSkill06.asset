@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78dd6cfcb7b7f294fab2f298d384ab35, type: 3}
+  m_Name: PriestSkill06
+  m_EditorClassIdentifier: 
+  abilityName: "\u9C7C\u795E\u8D50\u798F\u2014\u2014\u73AF\u6D6A"
+  description: "\u5F00\u542F\u4E00\u4E2A\u6C34\u7CFB\u5706\u5F62\u5C4F\u969C\uFF0C\u5927\u5E45\u5EA6\u5730\u62B5\u6321\u6765\u81EA\u5916\u90E8\u7684\u4F24\u5BB3\uFF0C\u6301\u7EED\u4E24\u56DE\u5408"
+  icon: {fileID: 0}
+  actionPointCost: 5
+  isInstant: 1
+  targetScope: 5
+  areaRadius: 19
+  areaRadiusMeters: 5
+  areaWidthMeters: 2
+  requiredTags:
+  - tagName: Job.Priest
+  blockTags: []
+  abilityTags:
+  - tagName: God.YiMenGod.Fish
+  animTrigger: SkillIndex
+  skillAnimIndex: 7
+  defaultVfx: []
+  effects:
+  - rid: 3699152103755481089
+  - rid: 3699152103755481090
+  references:
+    version: 2
+    RefIds:
+    - rid: 3699152103755481089
+      type: {class: SpawnBarrierAbilityEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u5F00\u542F\u5C4F\u969C\uFF0C\u62B5\u6321\u5916\u90E880%\u7684\u4F24\u5BB3\uFF0C\u6301\u7EED\u4E24\u56DE\u5408"
+        phase: 1
+        targetSelection: 0
+        chance: 1
+        damageReduction: 0.8
+        durationTurns: 2
+        widthMetersOverride: 0
+        thicknessMeters: 0.5
+        protectAlliesOnly: 1
+        barrierTag:
+          tagName: Zone.Barrier
+    - rid: 3699152103755481090
+      type: {class: HyperArmorAbilityEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u8303\u56F4\u5185\u53CB\u65B9\u83B7\u5F97\u9738\u4F53\uFF0C\u6301\u7EED\u4E24\u56DE\u5408"
+        phase: 1
+        targetSelection: 0
+        chance: 1
+        areaShape: 2
+        affiliationFilter: 0
+        durationTurns: 2
+        radiusMetersOverride: 0
+        widthMetersOverride: 0
+        buffTag:
+          tagName: Buff.HyperArmor.RingWave

@@ -64,7 +64,13 @@ using System.Runtime.CompilerServices;
         /// </summary>
         public static class State
         {
-            //示例：public static readonly GameplayTag Stun = new GameplayTag("State.Stun");
+            public static readonly GameplayTag Idle = new GameplayTag("State.Idle");
+            public static readonly GameplayTag Moving = new GameplayTag("State.Moving");
+            public static readonly GameplayTag Casting = new GameplayTag("State.Casting");
+            public static readonly GameplayTag Hit = new GameplayTag("State.Hit");
+            public static readonly GameplayTag Dead = new GameplayTag("State.Dead");
+            [Header("引导/仪式中")]
+            public static readonly GameplayTag Channeling = new GameplayTag("State.Channeling");
         }
         
         //职业
@@ -83,7 +89,7 @@ using System.Runtime.CompilerServices;
             [Header("追猎者")]
             public static readonly GameplayTag Hunter = new GameplayTag("Job.Hunter");
             [Header("神官")]
-            public static readonly GameplayTag priest = new GameplayTag("Job.priest");
+            public static readonly GameplayTag priest = new GameplayTag("Job.Priest");
         }
 
         //王国
@@ -100,6 +106,17 @@ using System.Runtime.CompilerServices;
             
         }
 
+        //角色
+        public static class Character
+        {
+            [Header("罗兰")]
+            public static readonly GameplayTag Roland = new GameplayTag("Character.Roland");
+            [Header("椿")]
+            public static readonly GameplayTag Haru = new GameplayTag("Character.Haru");
+            [Header("露娜")]
+            public static readonly GameplayTag Luna = new GameplayTag("Character.Luna");
+        }
+
         //伤害特性
         public static class DamageType
         {
@@ -107,12 +124,101 @@ using System.Runtime.CompilerServices;
             public static readonly GameplayTag Divine = new GameplayTag("DamageType.Divine");
             [Header("物理")]
             public static readonly GameplayTag Physical = new GameplayTag("DamageType.Physical");
+            [Header("法术")]
+            public static readonly GameplayTag Fire = new GameplayTag("DamageType.AP");
         }
 
-        //Buff
+        //Buff — 类别 tag（Buff.AttackUp 等）仅作默认/查询；技能实例用 Buff.<类别>.<技能名> 以支持多来源叠加。
         public static class Buff
         {
-            public static readonly GameplayTag HolyShield = new GameplayTag("Buff.HolyShield");
+            [Header("攻击力提高（类别）")]
+            public static readonly GameplayTag AttackUp = new GameplayTag("Buff.AttackUp");
+            [Header("防御力提高（类别）")]
+            public static readonly GameplayTag DefenseUp = new GameplayTag("Buff.DefenseUp");
+            [Header("敏捷提高（类别）")]
+            public static readonly GameplayTag AgilityUp = new GameplayTag("Buff.AgilityUp");
+            [Header("速度提高（类别）")]
+            public static readonly GameplayTag SpeedUp = new GameplayTag("Buff.SpeedUp");
+            [Header("狂怒状态")]
+            public static readonly GameplayTag Anger = new GameplayTag("Buff.Anger");
+            [Header("永世怒火晶石 — 与晶石生命周期绑定")]
+            public static readonly GameplayTag Anger_EternalFlame = new GameplayTag("Buff.Anger.EternalFlame");
+            [Header("祈福护佑（增益回合冻结）")]
+            public static readonly GameplayTag BlessingWard = new GameplayTag("Buff.BlessingWard");
+            [Header("霸体（免疫受击/眩晕表现）")]
+            public static readonly GameplayTag HyperArmor = new GameplayTag("Buff.HyperArmor");
+
+            public static readonly GameplayTag HyperArmor_RingWave = new GameplayTag("Buff.HyperArmor.RingWave");
+            [Header("突进霸体 — 与 DashCharge 生命周期绑定")]
+            public static readonly GameplayTag HyperArmor_DashCharge = new GameplayTag("Buff.HyperArmor.DashCharge");
+
+            [Header("攻升 — 技能实例")]
+            public static readonly GameplayTag AttackUp_DogBlessing = new GameplayTag("Buff.AttackUp.DogBlessing");
+            public static readonly GameplayTag AttackUp_HolyLightI = new GameplayTag("Buff.AttackUp.HolyLightI");
+            public static readonly GameplayTag AttackUp_SurfaciaBlessing = new GameplayTag("Buff.AttackUp.SurfaciaBlessing");
+
+            [Header("防升 — 技能实例")]
+            public static readonly GameplayTag DefenseUp_CraneBlessing = new GameplayTag("Buff.DefenseUp.CraneBlessing");
+            public static readonly GameplayTag DefenseUp_HolyLightII = new GameplayTag("Buff.DefenseUp.HolyLightII");
+            public static readonly GameplayTag DefenseUp_SurfaciaBlessing = new GameplayTag("Buff.DefenseUp.SurfaciaBlessing");
+
+            [Header("敏捷 — 技能实例")]
+            public static readonly GameplayTag AgilityUp_SurfaciaBlessing = new GameplayTag("Buff.AgilityUp.SurfaciaBlessing");
+
+            [Header("月相（露娜，由月魂层数同步，互斥）")]
+            public static readonly GameplayTag MoonPhase_NewMoon = new GameplayTag("Buff.MoonPhase.NewMoon");
+            public static readonly GameplayTag MoonPhase_HalfMoon = new GameplayTag("Buff.MoonPhase.HalfMoon");
+            public static readonly GameplayTag MoonPhase_FullMoon = new GameplayTag("Buff.MoonPhase.FullMoon");
+        }
+
+        //Debuff
+        public static class Debuff
+        {
+            [Header("眩晕")]
+            public static readonly GameplayTag Stun = new GameplayTag("Debuff.Stun");
+            [Header("脆弱（受伤加深）")]
+            public static readonly GameplayTag Vulnerable = new GameplayTag("Debuff.Vulnerable");
+            public static readonly GameplayTag Vulnerable_Nightfall = new GameplayTag("Debuff.Vulnerable.Nightfall");
+            [Header("禁疗")]
+            public static readonly GameplayTag HealBlock = new GameplayTag("Debuff.HealBlock");
+            [Header("永世怒火晶石禁疗 — 与晶石生命周期绑定")]
+            public static readonly GameplayTag HealBlock_EternalFlame = new GameplayTag("Debuff.HealBlock.EternalFlame");
+        }
+
+        //领域
+        public static class Zone
+        {
+            [Header("神圣领域")]
+            public static readonly GameplayTag HolyField = new GameplayTag("Zone.HolyField");
+            [Header("平面屏障")]
+            public static readonly GameplayTag Barrier = new GameplayTag("Zone.Barrier");
+            [Header("拉比斯十字激光")]
+            public static readonly GameplayTag LapisCross = new GameplayTag("Zone.LapisCross");
+        }
+
+        //召唤物
+        public static class Prop
+        {
+            [Header("永世怒火晶石")]
+            public static readonly GameplayTag EternalFlameCrystal = new GameplayTag("Prop.EternalFlameCrystal");
+        }
+
+        //伊门众神 — 椿「x神赐福」类技能 abilityTags
+        public static class God
+        {
+            public static class YiMenGod
+            {
+                [Header("狐神")]
+                public static readonly GameplayTag Fox = new GameplayTag("God.YiMenGod.Fox");
+                [Header("犬神")]
+                public static readonly GameplayTag Dog = new GameplayTag("God.YiMenGod.Dog");
+                [Header("鹤神")]
+                public static readonly GameplayTag Crane = new GameplayTag("God.YiMenGod.Crane");
+                [Header("蝶神")]
+                public static readonly GameplayTag Butterfly = new GameplayTag("God.YiMenGod.Butterfly");
+                [Header("鱼神")]
+                public static readonly GameplayTag Fish = new GameplayTag("God.YiMenGod.Fish");
+            }
         }
     }
 

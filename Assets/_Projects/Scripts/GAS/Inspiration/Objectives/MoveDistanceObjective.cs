@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// 累计移动指定格数
+/// 累计移动指定米数。
 /// </summary>
 [System.Serializable]
 public class MoveDistanceObjective : InspirationObjective
@@ -13,6 +13,7 @@ public class MoveDistanceObjective : InspirationObjective
 
     public override int GetProgressDelta(CombatEvent evt, AbilitySystemComponent owner)
     {
-        return Mathf.Max(1, evt.intValue);
+        float meters = evt.value > 0f ? evt.value : evt.intValue;
+        return Mathf.Max(1, Mathf.RoundToInt(meters));
     }
 }

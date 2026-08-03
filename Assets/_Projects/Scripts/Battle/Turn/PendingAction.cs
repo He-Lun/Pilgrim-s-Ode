@@ -10,7 +10,7 @@ public enum InsertPriority
 
 /// <summary>
 /// 一次“插入行动”（终结技/追击/自爆等）的调度数据。
-/// 由触发源构造并压入 ActionQueue 的插入栈，走深度优先结算。
+/// 由触发源构造并压入 ActionQueue 第一排；当前回合内先进暂存区，回合令牌弹出后再入队首。
 /// 注意：插入行动只跑技能，不触发“回合”事件（回合 vs 行动的区分由 TurnManager 处理）。
 /// </summary>
 public struct PendingAction

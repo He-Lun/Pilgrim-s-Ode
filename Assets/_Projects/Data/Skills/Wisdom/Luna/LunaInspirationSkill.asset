@@ -1,0 +1,87 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78dd6cfcb7b7f294fab2f298d384ab35, type: 3}
+  m_Name: LunaInspirationSkill
+  m_EditorClassIdentifier: 
+  abilityName: "\u6708\u795E\u4ECD\u5728\u6C89\u7761"
+  description: "\u6D88\u8017\u5168\u90E8\u6708\u9B42\uFF0C\u5BF9\u8303\u56F4\u5185\u654C\u4EBA\u9020\u6210\u5DE8\u5927\u4F24\u5BB3\uFF0C\u6BCF\u5C42\u6708\u9B42\u989D\u5916+150%\u4F24\u5BB3"
+  icon: {fileID: 0}
+  actionPointCost: 10
+  isInstant: 1
+  targetScope: 5
+  areaRadius: 0
+  areaRadiusMeters: 10
+  areaWidthMeters: 0
+  sectorHalfAngleDegrees: 45
+  requiredTags:
+  - tagName: Job.Wisdom
+  blockTags: []
+  abilityTags:
+  - tagName: DamageType.AP
+  animTrigger: SkillIndex
+  skillAnimIndex: 8
+  defaultVfx: []
+  effects:
+  - rid: 3699152700000000701
+  - rid: 3699152700000000702
+  references:
+    version: 2
+    RefIds:
+    - rid: 3699152700000000701
+      type: {class: MoonSoulConsumeAbilityEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u6D88\u8017\u5168\u90E8\u6708\u9B42"
+        phase: 0
+        targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
+        chance: 1
+        requiredCasterTags: []
+        blockCasterTags: []
+        targetVfx:
+          prefab: {fileID: 3492640717203991102, guid: 4514fc92d9d82194bac8bf4478009e19,
+            type: 3}
+          timing: 0
+          anchor:
+            type: 5
+            attachPointId: Stomach
+            localOffset: {x: 0, y: 0, z: 0}
+          attachMode: 1
+          rotationMode: 0
+          autoDestroySeconds: 0
+        applyToCaster: 1
+    - rid: 3699152700000000702
+      type: {class: MoonSoulScaledDamageEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u8303\u56F4\u5185\u654C\u4EBA\u53D7\u5230\u57FA\u7840200%+200%/\u5C42\u6708\u9B42\u7684\u6CD5\u672F\u4F24\u5BB3"
+        phase: 1
+        targetSelection: 0
+        targetScope: 0
+        areaRadiusMetersOverride: 0
+        chance: 1
+        requiredCasterTags: []
+        blockCasterTags: []
+        targetVfx:
+          prefab: {fileID: 470883537813070815, guid: 89f2963c940f85149aeaef93baace8d5,
+            type: 3}
+          timing: 1
+          anchor:
+            type: 5
+            attachPointId: Stomach
+            localOffset: {x: 0, y: 0, z: 0}
+          attachMode: 1
+          rotationMode: 0
+          autoDestroySeconds: 0
+        baseScaler: 2
+        bonusPerStack: 2
+        damageType:
+          tagName: DamageType.AP

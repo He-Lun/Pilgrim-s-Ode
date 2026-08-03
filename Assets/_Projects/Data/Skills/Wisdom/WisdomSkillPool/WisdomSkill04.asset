@@ -1,0 +1,92 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78dd6cfcb7b7f294fab2f298d384ab35, type: 3}
+  m_Name: WisdomSkill04
+  m_EditorClassIdentifier: 
+  abilityName: "\u5E94\u6025\u9B54\u6CD5\u2014\u2014\u7535\u73AF"
+  description: "\u9009\u62E9\u4E00\u53CB\u65B9\u89D2\u8272\uFF0C\u5728\u5176\u8EAB\u4F53\u5468\u56F4\u751F\u6210\u4E00\u5708\u7535\u73AF\uFF0C\u78B0\u5230\u7684\u654C\u4EBA\u4F1A\u6536\u5230\u4E2D\u7B49\u6CD5\u672F\u4F24\u5BB3\u5E76\u88AB\u51FB\u9000"
+  icon: {fileID: 0}
+  actionPointCost: 3
+  isInstant: 1
+  targetScope: 2
+  areaRadius: 1
+  areaRadiusMeters: 5
+  areaWidthMeters: 2
+  sectorHalfAngleDegrees: 45
+  requiredTags:
+  - tagName: Job.Wisdom
+  blockTags: []
+  abilityTags: []
+  animTrigger: SkillIndex
+  skillAnimIndex: 5
+  defaultVfx: []
+  effects:
+  - rid: 3699152208522903552
+  - rid: 3699152208522903557
+  references:
+    version: 2
+    RefIds:
+    - rid: 3699152208522903552
+      type: {class: SpawnElectricRingAbilityEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u751F\u6210\u7535\u73AF\uFF0C\u5BF9\u89E6\u78B0\u7684\u654C\u4EBA\u9020\u6210250%\u4F24\u5BB3\u5E76\u5C0F\u5E45\u5EA6\u51FB\u9000"
+        phase: 1
+        targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
+        chance: 1
+        requiredCasterTags: []
+        blockCasterTags: []
+        targetVfx:
+          prefab: {fileID: 470883537813070815, guid: 89f2963c940f85149aeaef93baace8d5,
+            type: 3}
+          timing: 1
+          anchor:
+            type: 5
+            attachPointId: Stomach
+            localOffset: {x: 0, y: 0, z: 0}
+          attachMode: 1
+          rotationMode: 0
+          autoDestroySeconds: 0
+        scaler: 2.5
+        damageType:
+          tagName: DamageType.AP
+        durationTurns: 2
+        radiusMetersOverride: 3.5
+        knockbackDistanceMeters: 2
+        knockbackDurationSeconds: 0.35
+        ringVfxPrefab: {fileID: 7136878053465724469, guid: fc08e8dda592cc44c8f3440fee4f15d5,
+          type: 3}
+    - rid: 3699152208522903557
+      type: {class: MoonSoulGrantAbilityEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u83B7\u5F97\u4E00\u5C42\u6708\u9B42"
+        phase: 1
+        targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
+        chance: 1
+        requiredCasterTags: []
+        blockCasterTags: []
+        targetVfx:
+          prefab: {fileID: 1685868239990212167, guid: f029d132da06dc24389ba65169f97e52,
+            type: 3}
+          timing: 0
+          anchor:
+            type: 5
+            attachPointId: Stomach
+            localOffset: {x: 0, y: 0, z: 0}
+          attachMode: 1
+          rotationMode: 0
+          autoDestroySeconds: 0
+        stacks: 1
+        applyToCaster: 1

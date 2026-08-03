@@ -1,18 +1,12 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
 /// <summary>
 /// 行动条 — 双层结构：
-///   · AV 时间轴（其他排）：按行动值稳定排序的未来出手序列；
-///   · 插入栈（第一排/确认区）：终结技/追击/自爆等“行动”，深度优先结算。
-/// 第一排 = 插入栈非空时的栈顶；否则为时间轴最前。
-///
-/// 排序规则：
-///   · 批内插入：优先级降序 → 敏捷降序；
-///   · 时间轴平局：稳定排序（AV 相等时保持当前条上的顺序）。
-///
-/// 本类只负责“排序与增删”，不涉及行动点/抽牌/事件广播（由 TurnManager 编排）。
+///   · 第一排：双端优先队列（左入插入、右入回合、队首结算）；
+///   · 第二排：AV 时间轴（每单位下一次回合位置）。
 /// </summary>
 public class ActionQueue : MonoBehaviour
 {
@@ -20,18 +14,31 @@ public class ActionQueue : MonoBehaviour
 
     public static ActionQueue Instance { get; private set; }
 
-    /// <summary>时间轴单元：角色实例 + 当前剩余行动值。</summary>
+    public event Action Changed;
+
+    public readonly struct TimelineRow
+    {
+        public readonly AbilitySystemComponent unit;
+        public readonly float av;
+
+        public TimelineRow(AbilitySystemComponent unit, float av)
+        {
+            this.unit = unit;
+            this.av = av;
+        }
+    }
+
     private class TimelineEntry
     {
         public AbilitySystemComponent unit;
         public float currentAV;
     }
 
-    // 时间轴：始终按 currentAV 稳定升序（[0] 为最前）
     private readonly List<TimelineEntry> timeline = new List<TimelineEntry>();
-
-    // 插入栈：深度优先
-    private readonly Stack<PendingAction> insertStack = new Stack<PendingAction>();
+    private readonly LinkedList<PriorityQueueEntry> priorityDeque = new LinkedList<PriorityQueueEntry>();
+    private readonly Queue<PendingAction> insertStaging = new Queue<PendingAction>();
+    private readonly List<PendingAction> activeConfirmDisplay = new List<PendingAction>();
+    private bool stagingDeferUntilTurnEnd;
 
     void Awake()
     {
@@ -49,13 +56,13 @@ public class ActionQueue : MonoBehaviour
     }
 
     // ==================================================================
-    //  时间轴（其他排）
+    //  时间轴（第二排）
     // ==================================================================
 
-    /// <summary>入场。initialAdvancePercent 用于“战斗开始/召唤时行动提前 X%”。</summary>
     public void Register(AbilitySystemComponent unit, float initialAdvancePercent = 0f)
     {
         if (unit == null || Find(unit) != null) return;
+        if (!unit.ParticipatesInActionQueue) return;
 
         float full = FullAV(unit);
         float av = full;
@@ -64,22 +71,21 @@ public class ActionQueue : MonoBehaviour
 
         timeline.Add(new TimelineEntry { unit = unit, currentAV = av });
         StableSort();
+        NotifyChanged();
     }
 
-    /// <summary>退场（死亡/离场）。</summary>
     public void Unregister(AbilitySystemComponent unit)
     {
         if (unit == null) return;
         timeline.RemoveAll(e => e.unit == unit);
+        NotifyChanged();
     }
 
-    /// <summary>时间轴最前（AV 最小，平局按当前条序）。</summary>
     public AbilitySystemComponent PeekTimeline()
     {
         return timeline.Count > 0 ? timeline[0].unit : null;
     }
 
-    /// <summary>弹出最前：全体减去 minAV 后移出并返回它（供“角色回合”）。</summary>
     public AbilitySystemComponent PopTimeline()
     {
         if (timeline.Count == 0) return null;
@@ -95,10 +101,10 @@ public class ActionQueue : MonoBehaviour
         }
 
         timeline.RemoveAt(0);
+        NotifyChanged();
         return first.unit;
     }
 
-    /// <summary>回合结算后把角色以满 AV 重新插回条上。</summary>
     public void Reinsert(AbilitySystemComponent unit)
     {
         if (unit == null) return;
@@ -106,13 +112,9 @@ public class ActionQueue : MonoBehaviour
         timeline.RemoveAll(e => e.unit == unit);
         timeline.Add(new TimelineEntry { unit = unit, currentAV = FullAV(unit) });
         StableSort();
+        NotifyChanged();
     }
 
-    // ==================================================================
-    //  行动提前 / 延后（时间轴 AV 操作，不进插入栈）
-    // ==================================================================
-
-    /// <summary>行动提前：currentAV -= 满AV × percent（夹到 0）。percent=1 即提前 100%。</summary>
     public void AdvanceForward(AbilitySystemComponent unit, float percent)
     {
         var e = Find(unit);
@@ -120,9 +122,9 @@ public class ActionQueue : MonoBehaviour
 
         e.currentAV = Mathf.Max(0f, e.currentAV - FullAV(unit) * percent);
         StableSort();
+        NotifyChanged();
     }
 
-    /// <summary>行动延后：currentAV += 满AV × percent。</summary>
     public void DelayAction(AbilitySystemComponent unit, float percent)
     {
         var e = Find(unit);
@@ -130,9 +132,9 @@ public class ActionQueue : MonoBehaviour
 
         e.currentAV += FullAV(unit) * percent;
         StableSort();
+        NotifyChanged();
     }
 
-    /// <summary>速度(敏捷)变化时按已走进度比例重算：AV_new = AV_old × (oldAgility / newAgility)。</summary>
     public void OnAgilityChanged(AbilitySystemComponent unit, float oldAgility, float newAgility)
     {
         var e = Find(unit);
@@ -140,78 +142,191 @@ public class ActionQueue : MonoBehaviour
 
         e.currentAV *= oldAgility / newAgility;
         StableSort();
+        NotifyChanged();
     }
 
     // ==================================================================
-    //  插入栈（第一排：深度优先）
+    //  第一排 — 双端优先队列
     // ==================================================================
 
-    /// <summary>压入单个插入行动（连锁中新触发的反应用它）。</summary>
-    public void PushInsert(PendingAction action)
+    /// <summary>正常回合从右侧入队。</summary>
+    public void EnqueueTurnBack(AbilitySystemComponent actor)
     {
-        insertStack.Push(action);
+        if (actor == null) return;
+        priorityDeque.AddLast(PriorityQueueEntry.FromTurn(actor));
+        NotifyChanged();
     }
 
     /// <summary>
-    /// 压入同一时刻批量触发的插入行动。
-    /// 内部按“优先级降序 → 敏捷降序”排出期望结算顺序，再【逆序压栈】使弹出即为正序。
+    /// 当前回合内触发的插入 — 先进暂存区。
+    /// deferUntilTurnEnd=true：等回合令牌弹出后再灌入（如本回合内批量追加）；
+    /// false：下一次 NotifyActionResolved 时灌入（如友方攻击触发的追加）。
     /// </summary>
-    public void PushInsertBatch(List<PendingAction> batch)
+    public void StageInsert(PendingAction action, bool deferUntilTurnEnd = false)
+    {
+        if (action.actor == null || action.ability == null) return;
+        insertStaging.Enqueue(action);
+        if (deferUntilTurnEnd)
+            stagingDeferUntilTurnEnd = true;
+        NotifyChanged();
+    }
+
+    public bool CanFlushStagingOnActionResolved =>
+        insertStaging.Count > 0 && !stagingDeferUntilTurnEnd;
+
+    /// <summary>立即从左侧入队（回合外连锁、死亡自爆等）。</summary>
+    public void EnqueueInsertFront(PendingAction action)
+    {
+        if (action.actor == null || action.ability == null) return;
+        priorityDeque.AddFirst(PriorityQueueEntry.FromInsert(action));
+        NotifyChanged();
+    }
+
+    /// <summary>批量从左侧入队（已按结算顺序排好，最先结算的在列表最前）。</summary>
+    public void EnqueueInsertFrontBatch(List<PendingAction> batch)
     {
         if (batch == null || batch.Count == 0) return;
 
         var ordered = new List<PendingAction>(batch);
-        ordered.Sort(CompareInsert); // ordered[0] = 最先结算
+        ordered.Sort(CompareInsert);
         for (int i = ordered.Count - 1; i >= 0; i--)
-            insertStack.Push(ordered[i]);
+            priorityDeque.AddFirst(PriorityQueueEntry.FromInsert(ordered[i]));
+
+        NotifyChanged();
     }
 
-    /// <summary>弹出栈顶插入行动（供“角色行动”）。</summary>
-    public PendingAction PopInsert()
+    /// <summary>暂存区依次灌入队首左侧（保持 FIFO）。</summary>
+    public void FlushStagingToFront()
     {
-        return insertStack.Pop();
+        if (insertStaging.Count == 0)
+            return;
+
+        var buffered = insertStaging.ToArray();
+        insertStaging.Clear();
+        stagingDeferUntilTurnEnd = false;
+        for (int i = buffered.Length - 1; i >= 0; i--)
+            priorityDeque.AddFirst(PriorityQueueEntry.FromInsert(buffered[i]));
+
+        NotifyChanged();
     }
 
-    public bool HasInsert => insertStack.Count > 0;
-
-    // 优先级降序 → 敏捷(速度)降序
-    private static int CompareInsert(PendingAction a, PendingAction b)
+    /// <summary>弹出队首插入行动；队首为回合令牌或队列为空时返回 false。弹出后仍保留在第一排 UI 直至 CompleteFrontConfirmInsert。</summary>
+    public bool TryPopFrontInsert(out PendingAction action)
     {
-        int byPriority = ((int)b.priority).CompareTo((int)a.priority);
-        if (byPriority != 0) return byPriority;
+        action = default;
+        if (priorityDeque.Count == 0 || priorityDeque.First.Value.kind != PriorityEntryKind.Insert)
+            return false;
 
-        float agiA = a.actor != null && a.actor.Attributes != null ? a.actor.Attributes.Agility : 0f;
-        float agiB = b.actor != null && b.actor.Attributes != null ? b.actor.Attributes.Agility : 0f;
-        return agiB.CompareTo(agiA);
+        action = priorityDeque.First.Value.pending;
+        priorityDeque.RemoveFirst();
+        activeConfirmDisplay.Add(action);
+        NotifyChanged();
+        return true;
     }
+
+    /// <summary>队首插入行动表现结束后从第一排 UI 移除。</summary>
+    public void CompleteFrontConfirmInsert()
+    {
+        if (activeConfirmDisplay.Count == 0)
+            return;
+
+        activeConfirmDisplay.RemoveAt(0);
+        NotifyChanged();
+    }
+
+    /// <summary>若队首展示项已不再阻塞，则移除。</summary>
+    public void TryCompleteActiveConfirmInsert()
+    {
+        if (activeConfirmDisplay.Count == 0)
+            return;
+
+        var pending = activeConfirmDisplay[0];
+        if (pending.actor != null && pending.actor.AbilityBlocksTurnHandoff)
+            return;
+
+        CompleteFrontConfirmInsert();
+    }
+
+    public bool HasActiveConfirmDisplay => activeConfirmDisplay.Count > 0;
+
+    /// <summary>移除队尾的回合令牌（角色回合结束时调用）。</summary>
+    public void PopTurnToken(AbilitySystemComponent actor)
+    {
+        if (actor == null || priorityDeque.Count == 0)
+            return;
+
+        var node = priorityDeque.Last;
+        if (node.Value.kind == PriorityEntryKind.Turn && node.Value.actor == actor)
+            priorityDeque.RemoveLast();
+
+        NotifyChanged();
+    }
+
+    public bool HasFrontInsert =>
+        priorityDeque.Count > 0 && priorityDeque.First.Value.kind == PriorityEntryKind.Insert;
+
+    public bool HasPendingWork =>
+        HasFrontInsert || insertStaging.Count > 0 || HasTurnToken;
+
+    private bool HasTurnToken
+    {
+        get
+        {
+            return priorityDeque.Count > 0
+                   && priorityDeque.Last.Value.kind == PriorityEntryKind.Turn;
+        }
+    }
+
+    /// <summary>第一排 UI：执行中 + 暂存区 + 队首插入段（从左到右 = 即将结算顺序）。</summary>
+    public IEnumerable<PendingAction> EnumerateConfirmRowInserts()
+    {
+        for (int i = 0; i < activeConfirmDisplay.Count; i++)
+            yield return activeConfirmDisplay[i];
+
+        foreach (var pending in insertStaging)
+            yield return pending;
+
+        foreach (var entry in priorityDeque)
+        {
+            if (entry.kind != PriorityEntryKind.Insert)
+                break;
+            yield return entry.pending;
+        }
+    }
+
+    /// <summary>兼容旧名。</summary>
+    public IEnumerable<PendingAction> EnumerateInsertsTopFirst() => EnumerateConfirmRowInserts();
 
     // ==================================================================
     //  第一排 & UI 预览
     // ==================================================================
 
-    /// <summary>下一个要结算的条目：插入栈非空 → Action(栈顶)；否则 → Turn(时间轴最前)。</summary>
     public NextEntry PeekNext()
     {
-        if (HasInsert)
-            return NextEntry.Action(insertStack.Peek());
+        if (insertStaging.Count > 0)
+            return NextEntry.Action(insertStaging.Peek());
+
+        if (priorityDeque.Count > 0)
+        {
+            var front = priorityDeque.First.Value;
+            if (front.kind == PriorityEntryKind.Insert)
+                return NextEntry.Action(front.pending);
+        }
 
         var u = PeekTimeline();
         return u != null ? NextEntry.Turn(u) : NextEntry.None;
     }
 
-    /// <summary>预测未来出手序列（先插入栈按弹出序，再模拟时间轴），供行动条 UI。</summary>
     public List<AbilitySystemComponent> PreviewOrder(int count)
     {
         var result = new List<AbilitySystemComponent>(count);
 
-        // Stack 的枚举顺序即栈顶到栈底 = 弹出顺序
-        foreach (var pending in insertStack)
+        foreach (var pending in EnumerateConfirmRowInserts())
         {
             if (result.Count >= count) return result;
             if (pending.actor != null) result.Add(pending.actor);
         }
 
-        // 模拟时间轴推进（副本，不改真实数据）
         var sim = timeline
             .OrderBy(e => e.currentAV)
             .Select(e => new TimelineEntry { unit = e.unit, currentAV = e.currentAV })
@@ -225,33 +340,74 @@ public class ActionQueue : MonoBehaviour
             var first = sim[0];
             float minAV = first.currentAV;
             foreach (var e in sim) e.currentAV -= minAV;
-            first.currentAV = FullAV(first.unit); // 行动后重置，模拟其下一次出手
+            first.currentAV = FullAV(first.unit);
             result.Add(first.unit);
         }
 
         return result;
     }
 
-    // ==================================================================
-    //  兼容旧接口（InspirationTaskTracker 仍在调用）
-    // ==================================================================
+    public List<TimelineRow> GetTimelineSnapshot()
+    {
+        StableSort();
+        var rows = new List<TimelineRow>(timeline.Count);
+        for (int i = 0; i < timeline.Count; i++)
+        {
+            var e = timeline[i];
+            if (e.unit != null)
+                rows.Add(new TimelineRow(e.unit, e.currentAV));
+        }
 
-    /// <summary>[兼容] 旧的激励插队入口，重定向到行动提前。</summary>
+        return rows;
+    }
+
+    public float PreviewAvAfterAdvance(AbilitySystemComponent unit, float percent)
+    {
+        var e = Find(unit);
+        if (e == null || percent <= 0f)
+            return float.MaxValue;
+
+        return Mathf.Max(0f, e.currentAV - FullAV(unit) * percent);
+    }
+
+    /// <summary>预演角色回合结束 Reinsert 后的 AV（不在条上则按满 AV 计算）。</summary>
+    public float PreviewNextTurnAv(AbilitySystemComponent unit)
+    {
+        if (unit == null)
+            return float.MaxValue;
+
+        var e = Find(unit);
+        return e != null ? e.currentAV : FullAV(unit);
+    }
+
+    public bool IsOnTimeline(AbilitySystemComponent unit) => Find(unit) != null;
+
+    private void NotifyChanged() => Changed?.Invoke();
+
     public void ForceImmediateTurn(AbilitySystemComponent asc, float priorityBoost)
     {
         if (asc == null) return;
         AdvanceForward(asc, priorityBoost);
     }
 
-    // ==================================================================
-    //  辅助
-    // ==================================================================
-
-    /// <summary>清空整条行动条（战斗重置用）。</summary>
     public void Clear()
     {
         timeline.Clear();
-        insertStack.Clear();
+        priorityDeque.Clear();
+        insertStaging.Clear();
+        activeConfirmDisplay.Clear();
+        stagingDeferUntilTurnEnd = false;
+        NotifyChanged();
+    }
+
+    private static int CompareInsert(PendingAction a, PendingAction b)
+    {
+        int byPriority = ((int)b.priority).CompareTo((int)a.priority);
+        if (byPriority != 0) return byPriority;
+
+        float agiA = a.actor != null && a.actor.Attributes != null ? a.actor.Attributes.Agility : 0f;
+        float agiB = b.actor != null && b.actor.Attributes != null ? b.actor.Attributes.Agility : 0f;
+        return agiB.CompareTo(agiA);
     }
 
     private TimelineEntry Find(AbilitySystemComponent unit)
@@ -262,7 +418,6 @@ public class ActionQueue : MonoBehaviour
         return null;
     }
 
-    /// <summary>满行动值 = BASE / 敏捷（敏捷保底，避免除零）。</summary>
     private static float FullAV(AbilitySystemComponent unit)
     {
         float agi = unit != null && unit.Attributes != null ? unit.Attributes.Agility : 0f;
@@ -270,7 +425,6 @@ public class ActionQueue : MonoBehaviour
         return BASE_ACTION_VALUE / agi;
     }
 
-    // 稳定升序：LINQ OrderBy 为稳定排序，AV 相等时保持当前相对顺序（= 当前条上的顺序）
     private void StableSort()
     {
         if (timeline.Count <= 1) return;
@@ -278,4 +432,20 @@ public class ActionQueue : MonoBehaviour
         timeline.Clear();
         timeline.AddRange(sorted);
     }
+
+    // ==================================================================
+    //  兼容旧 API（TurnManager 逐步迁移后可删）
+    // ==================================================================
+
+    public void PushInsert(PendingAction action) => EnqueueInsertFront(action);
+
+    public void PushInsertBatch(List<PendingAction> batch) => EnqueueInsertFrontBatch(batch);
+
+    public PendingAction PopInsert()
+    {
+        TryPopFrontInsert(out var action);
+        return action;
+    }
+
+    public bool HasInsert => HasFrontInsert;
 }

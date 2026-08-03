@@ -1,0 +1,63 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78dd6cfcb7b7f294fab2f298d384ab35, type: 3}
+  m_Name: PriestSkill04
+  m_EditorClassIdentifier: 
+  abilityName: "\u9E64\u795E\u8D50\u798F\u2014\u2014\u534E\u88C5"
+  description: "\u4F7F\u4E00\u540D\u53CB\u65B9\u89D2\u8272\u83B7\u5F97\u5927\u5E45\u9632\u5FA1\u529B\u52A0\u6210\uFF0C\u6301\u7EED\u4E24\u56DE\u5408"
+  icon: {fileID: 0}
+  actionPointCost: 1
+  isInstant: 1
+  targetScope: 2
+  areaRadius: 35
+  areaRadiusMeters: 5
+  areaWidthMeters: 2
+  sectorHalfAngleDegrees: 45
+  requiredTags:
+  - tagName: Job.Priest
+  blockTags: []
+  abilityTags:
+  - tagName: God.YiMenGod.Crane
+  animTrigger: SkillIndex
+  skillAnimIndex: 5
+  defaultVfx: []
+  effects:
+  - rid: 3699152096997408771
+  references:
+    version: 2
+    RefIds:
+    - rid: 3699152096997408771
+      type: {class: BuffAbilityEffect, ns: , asm: Assembly-CSharp}
+      data:
+        description: "\u83B7\u5F97200%\u9632\u5FA1\u529B\u52A0\u6210\uFF0C\u6301\u7EED\u4E24\u56DE\u5408"
+        phase: 1
+        targetSelection: 0
+        targetScope: 6
+        areaRadiusMetersOverride: 0
+        chance: 1
+        requiredCasterTags: []
+        blockCasterTags: []
+        targetVfx:
+          prefab: {fileID: 0}
+          timing: 1
+          anchor:
+            type: 5
+            attachPointId: Stomach
+            localOffset: {x: 0, y: -1.1, z: 0}
+          attachMode: 1
+          rotationMode: 0
+          autoDestroySeconds: 1
+        attributeName: Defense
+        multiplicativeBonus: 2
+        durationTurns: 1
+        buffTag:
+          tagName: Buff.DefenseUp.CraneBlessing
